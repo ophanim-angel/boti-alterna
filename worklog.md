@@ -24,3 +24,22 @@ Stage Summary:
 - Demo accounts (password demo1234): direction@almanar.ma (ADMIN), s.benali@almanar.ma (TEACHER), f.bahatem@gmail.com (PARENT)
 - Seed script: scripts/seed.ts (bun scripts/seed.ts)
 - All modules from user requirements covered: scholarship progression, homeworks, info & notes, registrations & monthly subscriptions, complaints & discussions with teachers/administration
+
+---
+Task ID: 2
+Agent: Super Z (main agent)
+Task: Improve the EduTrack app, regenerate rich test data, and push all modifications to GitHub (ophanim-angel/boti-alterna)
+
+Work Log:
+- Found seed.ts corrupted (classesw.klass].id syntax errors) -> rewrote scripts/seed.ts completely and re-ran
+- New demo dataset: 19 users (1 admin, 6 teachers, 12 parents), 70 students across 11 classes, 70 registrations, 490 payments (Sep 2025 -> Mar 2026 incl. upcoming March), 20 homeworks, 28 evaluations, 186 grades, 9 announcements (incl. class-scoped), 6 complaint threads (16 messages, all statuses), 136 attendances (Nov-Feb), 220 timetable slots (all classes)
+- New features: /api/search (role-scoped global student search), /api/notifications (role-aware bell feed, 60s polling), /api/auth/password (change password), account-view.tsx (Mon compte), CSV export buttons (students + payments, BOM/fr-locale), printable payment receipts (branded print window)
+- Fixes: dashboard expected revenue was hardcoded (26*650*6) -> dynamic; removed invalid homeworks:undefined include; attendance route typed array; settings level _count; verified tsc + eslint clean
+- Browser-verified (agent-browser): admin login, global search dropdown -> student fiche, notifications dropdown (11 items), payments view (Export CSV + Reçu buttons), account view, parent scoping (search only own children), teacher dashboard
+- Git: untracked .env, db/custom.db, boti-alterna gitlink; .gitignore additions; 2 commits (feat + merge --allow-unrelated-histories with origin/main); reference alternatives.rar moved to reference/; pushed ophanim-angel/boti-alterna main 1cb2e85..ef49897
+- Commits authored as ophanim-angel <ophanim-angel@users.noreply.github.com>
+
+Stage Summary:
+- GitHub repo up to date: https://github.com/ophanim-angel/boti-alterna (main = ef49897)
+- App running at :3000, demo accounts unchanged (password demo1234): direction@almanar.ma / s.benali@almanar.ma / f.bahatem@gmail.com
+- Seed: bun scripts/seed.ts (regenerates all demo data)
