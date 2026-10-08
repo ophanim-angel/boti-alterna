@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USERS & AUTH ============
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String // ADMIN | TEACHER | PARENT
+  phone     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mainTeacherOf      Class[]              @relation("ClassMainTeacher")
+  teachingAssignment TeachingAssignment[]
+  guardianOf         GuardianRelation[]
+  timetableSessions  TimetableSession[]   @relation("SessionTeacher")
+  homeworks          Homework[]           @relation("HomeworkAuthor")
+  evaluations        Evaluation[]         @relation("EvaluationAuthor")
+  announcements      Announcement[]       @relation("AnnouncementAuthor")
+  complaints         Complaint[]          @relation("ComplaintAuthor")
+  complaintMessages  ComplaintMessage[]
+  attendanceRecords  Attendance[]         @relation("AttendanceRecorder")
+}
+
+model GuardianRelation {
+  id        String  @id @default(cuid())
+  userId    String
+  studentId String
+  relation  String // PERE | MERE | TUTEUR
+  isPrimary Boolean @default(false)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, studentId])
+}
+
+// ============ STRUCTURE (PARAMETRAGE) ============
+
+model Level {
+  id    String @id @default(cuid())
+  name  String // CP, CE1, 6AC...
+  cycle String // Maternelle | Primaire | Collège | Lycée
+  order Int
+
+  classes Class[]
+
+  @@unique([name])
+}
+
+model Class {
+  id            String  @id @default(cuid())
+  name          String // CE1/A
+  levelId       String
+  mainTeacherId String?
+  capacity      Int     @default(30)
+  room          String?
+
+  level               Level                @relation(fields: [levelId], references: [id])
+  mainTeacher         User?                @relation("ClassMainTeacher", fields: [mainTeacherId], references: [id])
+  students            Student[]
+  homeworks           Homework[]
+  evaluations         Evaluation[]
+  sessions            TimetableSession[]
+  announcements       Announcement[]
+  teachingAssignments TeachingAssignment[]
+
+  @@unique([name])
+}
+
+model Subject {
+  id    String  @id @default(cuid())
+  name  String
+  color String?
+
+  assignments       TeachingAssignment[]
+  homeworks         Homework[]
+  evaluations       Evaluation[]
+  timetableSessions TimetableSession[]
+
+  @@unique([name])
+}
+
+model TeachingAssignment {
+  id        String @id @default(cuid())
+  teacherId String
+  subjectId String
+  classId   String
+
+  teacher User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  klass   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId, classId])
+}
+
+model Period {
+  id        String    @id @default(cuid())
+  name      String
+  order     Int
+  startDate DateTime?
+  endDate   DateTime?
+  active    Boolean   @default(false)
+
+  evaluations Evaluation[]
+}
+
+model TimetableSession {
+  id        String  @id @default(cuid())
+  classId   String
+  subjectId String
+  teacherId String?
+  dayOfWeek Int // 1 = Lundi ... 7 = Dimanche
+  startTime String // "08:00"
+  endTime   String // "09:00"
+  room      String?
+
+  klass   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher User?   @relation("SessionTeacher", fields: [teacherId], references: [id])
+}
+
+// ============ ELEVES ============
+
+model Student {
+  id         String    @id @default(cuid())
+  matricule  String    @unique
+  firstName  String
+  lastName   String
+  gender     String // M | F
+  birthDate  DateTime?
+  massarCode String?
+  status     String    @default("ACTIVE") // ACTIVE | INACTIVE | LEFT | GRADUATED
+  classId    String?
+  enrolledAt DateTime  @default(now())
+  notes      String?
+
+  klass         Class?             @relation(fields: [classId], references: [id])
+  guardians     GuardianRelation[]
+  registrations Registration[]
+  payments      Payment[]
+  grades        Grade[]
+  attendances   Attendance[]
+  complaints    Complaint[]
+
+  @@index([classId])
+  @@index([lastName])
+}
+
+model Registration {
+  id         String   @id @default(cuid())
+  studentId  String
+  schoolYear String // 2025/2026
+  type       String // NOUVELLE | REINSCRIPTION
+  date       DateTime @default(now())
+  status     String   @default("VALIDEE") // EN_ATTENTE | VALIDEE | ANNULEE
+  feePaid    Boolean  @default(false)
+  feeAmount  Float    @default(0)
+  note       String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id         String    @id @default(cuid())
+  studentId  String
+  schoolYear String
+  month      Int // 9=Septembre ... 6=Juin
+  label      String // "Septembre 2025"
+  amount     Float
+  dueDate    DateTime
+  paidDate   DateTime?
+  status     String    @default("EN_ATTENTE") // PAYE | EN_ATTENTE | EN_RETARD
+  method     String? // ESPECES | CHEQUE | VIREMENT | CARTE
+  receiptNo  String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, schoolYear, month])
+  @@index([status])
+}
+
+// ============ PEDAGOGIE ============
+
+model Homework {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  classId     String
+  subjectId   String
+  teacherId   String
+  dueDate     DateTime
+  createdAt   DateTime @default(now())
+
+  klass   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  teacher User    @relation("HomeworkAuthor", fields: [teacherId], references: [id])
+
+  @@index([classId, dueDate])
+}
+
+model Evaluation {
+  id        String   @id @default(cuid())
+  title     String
+  type      String   @default("CONTROLE") // CONTROLE | EXAMEN | ORAL | PROJET
+  classId   String
+  subjectId String
+  teacherId String
+  periodId  String
+  maxScore  Float    @default(20)
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  klass   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  teacher User    @relation("EvaluationAuthor", fields: [teacherId], references: [id])
+  period  Period  @relation(fields: [periodId], references: [id])
+  grades  Grade[]
+}
+
+model Grade {
+  id           String  @id @default(cuid())
+  evaluationId String
+  studentId    String
+  score        Float?
+  absent       Boolean @default(false)
+  comment      String?
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, studentId])
+}
+
+// ============ COMMUNICATION ============
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  audience  String   @default("TOUS") // TOUS | ENSEIGNANTS | PARENTS | CLASSE
+  classId   String?
+  authorId  String
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  klass  Class? @relation(fields: [classId], references: [id])
+  author User   @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+}
+
+model Complaint {
+  id        String   @id @default(cuid())
+  subject   String
+  category  String   @default("AUTRE") // SCOLARITE | PAIEMENT | DISCIPLINE | SANTE | AUTRE
+  status    String   @default("OUVERTE") // OUVERTE | EN_COURS | RESOLUE | FERMEE
+  priority  String   @default("NORMALE") // BASSE | NORMALE | HAUTE
+  authorId  String
+  studentId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User               @relation("ComplaintAuthor", fields: [authorId], references: [id])
+  student  Student?           @relation(fields: [studentId], references: [id])
+  messages ComplaintMessage[]
+}
+
+model ComplaintMessage {
+  id          String   @id @default(cuid())
+  complaintId String
+  authorId    String
+  content     String
+  createdAt   DateTime @default(now())
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id])
+}
+
+// ============ VIE SCOLAIRE ============
+
+model Attendance {
+  id           String   @id @default(cuid())
+  studentId    String
+  date         DateTime
+  type         String // ABSENCE | RETARD
+  justified    Boolean  @default(false)
+  reason       String?
+  recordedById String?
+  createdAt    DateTime @default(now())
+
+  student  Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  recorder User?   @relation("AttendanceRecorder", fields: [recordedById], references: [id])
+
+  @@index([studentId, date])
+}
