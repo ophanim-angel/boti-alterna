@@ -186,7 +186,6 @@ export async function GET() {
               orderBy: { evaluation: { date: 'desc' } },
             },
             attendances: { where: { date: { gte: new Date('2026-01-01') } }, orderBy: { date: 'desc' } },
-            homeworks: undefined,
           },
         })
         if (!student) return null
@@ -231,7 +230,7 @@ export async function GET() {
       })
     )
 
-    const validChildren = children.filter(Boolean)
+    const validChildren = children.filter((c): c is NonNullable<typeof c> => Boolean(c))
 
     const anns = await db.announcement.findMany({
       where: { audience: { in: ['TOUS', 'PARENTS'] } },

@@ -52,3 +52,13 @@ prompt
 server.log
 # Skills directory
 /skills/
+# Local reference repo (cloned boti.education snapshots) — kept out of the app repo
+/boti-alterna/
+
+# Local database (regenerate with: bun scripts/seed.ts)
+/db/*.db
+
+/.env
+
+# Agent tool caches
+/tool-results/

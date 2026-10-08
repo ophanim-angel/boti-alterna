@@ -191,3 +191,22 @@ export type ViewKey =
   | 'announcements'
   | 'complaints'
   | 'settings'
+  | 'account'
+
+export interface SearchResult {
+  id: string
+  matricule: string
+  firstName: string
+  lastName: string
+  status: string
+  klassName: string | null
+}
+
+export interface NotificationItem {
+  id: string
+  type: 'complaint' | 'payment' | 'announcement' | 'homework'
+  title: string
+  detail: string
+  view: string
+  date: string
+}

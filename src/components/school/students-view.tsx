@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Search, Plus, Phone, Mail, CalendarDays, Fingerprint, MapPin, Loader2,
-  ChevronRight, TrendingUp, Wallet, CalendarX2, FileText, School, X,
+  ChevronRight, TrendingUp, Wallet, CalendarX2, FileText, School, X, Download,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,12 +15,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
-import { api, formatDate, statusPaymentBadge, statusPaymentLabel, statusStudentBadge, statusStudentLabel, initials, avatarColor, gradeColor, SCHOOL_YEAR } from './utils'
+import { api, formatDate, statusPaymentBadge, statusPaymentLabel, statusStudentBadge, statusStudentLabel, initials, avatarColor, gradeColor, downloadCSV, SCHOOL_YEAR } from './utils'
 import type { Lookups, SessionUser, Student, Payment, Attendance, Complaint, Guardian } from './types'
 
 interface StudentsViewProps {
   user: SessionUser
   lookups: Lookups | null
+  focusStudentId?: string | null
+  onFocusConsumed?: () => void
 }
 
 interface StudentDetail {
@@ -36,7 +38,7 @@ interface StudentDetail {
   progression: Array<{ subject: string; period: string; avg: number | null; count: number }>
 }
 
-export function StudentsView({ user, lookups }: StudentsViewProps) {
+export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }: StudentsViewProps) {
   const { toast } = useToast()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,6 +71,14 @@ export function StudentsView({ user, lookups }: StudentsViewProps) {
   }, [q, classFilter, statusFilter, toast])
 
   useEffect(() => { load() }, [load])
+
+  // open a student coming from the global search
+  useEffect(() => {
+    if (focusStudentId) {
+      setSelectedId(focusStudentId)
+      onFocusConsumed?.()
+    }
+  }, [focusStudentId, onFocusConsumed])
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return }
@@ -107,6 +117,24 @@ export function StudentsView({ user, lookups }: StudentsViewProps) {
     }
     return map
   }, [students])
+
+  function exportStudents() {
+    downloadCSV(
+      `eleves-almanar-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Matricule', 'Prénom', 'Nom', 'Sexe', 'Classe', 'Statut', 'Date de naissance', 'Code Massar'],
+      students.map((s) => [
+        s.matricule,
+        s.firstName,
+        s.lastName,
+        s.gender === 'M' ? 'Masculin' : 'Féminin',
+        s.klass?.name || 'Non affecté',
+        statusStudentLabel(s.status),
+        s.birthDate ? new Date(s.birthDate).toLocaleDateString('fr-FR') : '',
+        s.massarCode || '',
+      ])
+    )
+    toast({ title: 'Export CSV', description: `${students.length} élève(s) exporté(s).` })
+  }
 
   // ====== FICHE ELEVE ======
   if (selectedId) {
@@ -155,6 +183,11 @@ export function StudentsView({ user, lookups }: StudentsViewProps) {
         )}
         <div className="ml-auto flex items-center gap-3">
           <span className="text-sm text-slate-500">{students.length} élève(s)</span>
+          {!isParent && (
+            <Button variant="outline" onClick={exportStudents} className="border-slate-200 text-slate-600 hover:bg-slate-50">
+              <Download className="h-4 w-4 mr-1" /> Export CSV
+            </Button>
+          )}
           {user.role === 'ADMIN' && (
             <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4 mr-1" /> Nouvel élève

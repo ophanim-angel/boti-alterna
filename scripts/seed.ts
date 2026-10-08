@@ -73,6 +73,12 @@ async function main() {
     { email: 's.kimakh@gmail.com', name: 'Salma Kimakh', phone: '0673-404-404' },
     { email: 'o.ouadaa@gmail.com', name: 'Omar Ouadaa', phone: '0674-505-505' },
     { email: 'l.bennis@gmail.com', name: 'Leila Bennis', phone: '0675-606-606' },
+    { email: 'r.berrada@gmail.com', name: 'Rim Berrada', phone: '0676-707-707' },
+    { email: 'k.alaoui@gmail.com', name: 'Khalid Alaoui', phone: '0677-808-808' },
+    { email: 'n.mansouri@gmail.com', name: 'Nawal Mansouri', phone: '0678-909-909' },
+    { email: 't.chraibi@gmail.com', name: 'Tarik Chraïbi', phone: '0679-110-110' },
+    { email: 'h.benjelloun@gmail.com', name: 'Hind Benjelloun', phone: '0680-220-220' },
+    { email: 'm.tahiri@gmail.com', name: 'Mounir Tahiri', phone: '0681-330-330' },
   ]
   const parents: { id: string; name: string }[] = []
   for (const p of parentsData) {
@@ -184,6 +190,9 @@ async function main() {
       active: false,
     },
   })
+  const p1 = period1
+  const p2 = await db.period.findFirst({ where: { order: 2 } })
+  const p3 = await db.period.findFirst({ where: { order: 3 } })
 
   // ================= STUDENTS + GUARDIANS =================
   console.log('🎒 Élèves & familles...')
@@ -191,6 +200,7 @@ async function main() {
     first: string; last: string; gender: string; klass: string; birth: string;
     parents: number[]; status?: string;
   }> = [
+    // --- famille originale (parents 0-5) ---
     { first: 'Elene', last: 'Ouadaa', gender: 'F', klass: 'GS - A', birth: '2020-03-12', parents: [0, 4] },
     { first: 'Jad', last: 'Afif', gender: 'M', klass: 'GS - A', birth: '2020-01-25', parents: [1] },
     { first: 'Aya', last: 'Bennis', gender: 'F', klass: 'GS - A', birth: '2020-05-02', parents: [5] },
@@ -217,6 +227,51 @@ async function main() {
     { first: 'Karim', last: 'Ouadaa', gender: 'M', klass: '1AC - A', birth: '2014-07-30', parents: [4] },
     { first: 'Sara', last: 'Kimakh', gender: 'F', klass: '1AC - A', birth: '2014-03-09', parents: [3] },
     { first: 'Hamza', last: 'Bennis', gender: 'M', klass: '1AC - A', birth: '2014-10-12', parents: [5], status: 'INACTIVE' },
+    // --- nouveaux élèves (parents 0-11, familles élargies) ---
+    { first: 'Aya', last: 'Berrada', gender: 'F', klass: 'PS - G1', birth: '2022-02-18', parents: [6] },
+    { first: 'Adam', last: 'Chraïbi', gender: 'M', klass: 'PS - G1', birth: '2022-04-09', parents: [9] },
+    { first: 'Lina', last: 'Belkhayat', gender: 'F', klass: 'PS - G1', birth: '2022-06-27', parents: [10, 7] },
+    { first: 'Youssef', last: 'Amrani', gender: 'M', klass: 'PS - G1', birth: '2022-01-15', parents: [7] },
+    { first: 'Sofia', last: 'Lamrani', gender: 'F', klass: 'PS - G1', birth: '2022-08-03', parents: [11] },
+    { first: 'Rayan', last: 'Sqalli', gender: 'M', klass: 'PS - G1', birth: '2022-03-30', parents: [6, 11] },
+    { first: 'Nour', last: 'El Idrissi', gender: 'F', klass: 'MS - G1', birth: '2021-05-22', parents: [8] },
+    { first: 'Anas', last: 'Tazi', gender: 'M', klass: 'MS - G1', birth: '2021-09-14', parents: [9, 10] },
+    { first: 'Malak', last: 'Benjelloun', gender: 'F', klass: 'MS - G1', birth: '2021-11-02', parents: [10] },
+    { first: 'Omar', last: 'Alaoui', gender: 'M', klass: 'MS - G1', birth: '2021-07-19', parents: [7, 8] },
+    { first: 'Sara', last: 'Kettani', gender: 'F', klass: 'MS - G1', birth: '2021-04-25', parents: [8] },
+    { first: 'Ilyas', last: 'Hakimi', gender: 'M', klass: 'MS - G1', birth: '2021-12-08', parents: [9] },
+    { first: 'Kenza', last: 'Rahali', gender: 'F', klass: 'GS - A', birth: '2020-06-11', parents: [11, 6] },
+    { first: 'Mehdi', last: 'Squalli', gender: 'M', klass: 'GS - A', birth: '2020-09-23', parents: [6] },
+    { first: 'Lina', last: 'Berrada', gender: 'F', klass: 'GS - A', birth: '2020-02-05', parents: [10] },
+    { first: 'Aya', last: 'Mansouri', gender: 'F', klass: 'GS - B', birth: '2020-04-19', parents: [8] },
+    { first: 'Adam', last: 'Regragui', gender: 'M', klass: 'GS - B', birth: '2020-08-21', parents: [11] },
+    { first: 'Salma', last: 'Belcaid', gender: 'F', klass: 'GS - B', birth: '2020-10-17', parents: [7, 9] },
+    { first: 'Rayan', last: 'Lahlou', gender: 'M', klass: 'GS - B', birth: '2020-12-29', parents: [9] },
+    { first: 'Ilham', last: 'Bouzidi', gender: 'F', klass: 'CP - A', birth: '2019-10-05', parents: [11, 8] },
+    { first: 'Anas', last: 'Marrakchi', gender: 'M', klass: 'CP - A', birth: '2019-05-28', parents: [8] },
+    { first: 'Hiba', last: 'Chraibi', gender: 'F', klass: 'CP - A', birth: '2019-01-31', parents: [9] },
+    { first: 'Yassine', last: 'Berrada', gender: 'M', klass: 'CP - A', birth: '2019-07-07', parents: [6, 10] },
+    { first: 'Maryam', last: 'Bennani', gender: 'F', klass: 'CP - B', birth: '2019-03-24', parents: [10] },
+    { first: 'Adam', last: 'Sayeh', gender: 'M', klass: 'CP - B', birth: '2019-09-16', parents: [7] },
+    { first: 'Lina', last: 'Skalli', gender: 'F', klass: 'CP - B', birth: '2019-12-11', parents: [11, 9] },
+    { first: 'Omar', last: 'Benkirane', gender: 'M', klass: 'CP - B', birth: '2019-06-02', parents: [6] },
+    { first: 'Rania', last: 'El Meliani', gender: 'F', klass: 'CE1 - A', birth: '2018-04-08', parents: [8, 11] },
+    { first: 'Youssef', last: 'Doukkali', gender: 'M', klass: 'CE1 - A', birth: '2018-06-30', parents: [11] },
+    { first: 'Aya', last: 'Chraïbi', gender: 'F', klass: 'CE1 - A', birth: '2018-08-13', parents: [9] },
+    { first: 'Hamza', last: 'Belhaj', gender: 'M', klass: 'CE1 - A', birth: '2018-11-26', parents: [10, 6] },
+    { first: 'Salma', last: 'Alaoui', gender: 'F', klass: 'CE2 - A', birth: '2017-05-06', parents: [7] },
+    { first: 'Anas', last: 'Berrady', gender: 'M', klass: 'CE2 - A', birth: '2017-08-27', parents: [8] },
+    { first: 'Malak', last: 'Sqalli', gender: 'F', klass: 'CE2 - A', birth: '2017-02-12', parents: [9, 11] },
+    { first: 'Nada', last: 'Benjelloun', gender: 'F', klass: 'CM1 - A', birth: '2016-03-17', parents: [10] },
+    { first: 'Reda', last: 'Lamrani', gender: 'M', klass: 'CM1 - A', birth: '2016-07-09', parents: [6, 8] },
+    { first: 'Ines', last: 'Tahiri', gender: 'F', klass: 'CM1 - A', birth: '2016-11-21', parents: [11] },
+    { first: 'Walid', last: 'Rifai', gender: 'M', klass: 'CM1 - A', birth: '2016-01-04', parents: [7, 10] },
+    { first: 'Assia', last: 'Bourkadi', gender: 'F', klass: 'CM2 - A', birth: '2015-06-14', parents: [8] },
+    { first: 'Omar', last: 'Kabbaj', gender: 'M', klass: 'CM2 - A', birth: '2015-09-01', parents: [9, 6] },
+    { first: 'Hiba', last: 'Zniber', gender: 'F', klass: 'CM2 - A', birth: '2015-12-19', parents: [10] },
+    { first: 'Yasmine', last: 'Berrada', gender: 'F', klass: '1AC - A', birth: '2014-02-08', parents: [6] },
+    { first: 'Mehdi', last: 'Alaoui', gender: 'M', klass: '1AC - A', birth: '2014-04-26', parents: [7, 11] },
+    { first: 'Salma', last: 'Idrissi', gender: 'F', klass: '1AC - A', birth: '2014-08-15', parents: [11] },
   ]
 
   let matricule = 1001
@@ -261,7 +316,7 @@ async function main() {
       },
     })
 
-    // Payments: Septembre -> Février
+    // Payments: Septembre -> Mars (mars = échéance à venir)
     const months = [
       { m: 9, label: 'Septembre 2025', due: '2025-09-10' },
       { m: 10, label: 'Octobre 2025', due: '2025-10-10' },
@@ -269,13 +324,17 @@ async function main() {
       { m: 12, label: 'Décembre 2025', due: '2025-12-10' },
       { m: 1, label: 'Janvier 2026', due: '2026-01-10' },
       { m: 2, label: 'Février 2026', due: '2026-02-10' },
+      { m: 3, label: 'Mars 2026', due: '2026-03-10' },
     ]
     for (const mo of months) {
       const r = (matricule + mo.m) % 7
       let status = 'EN_ATTENTE'
       let paidDate: Date | null = null
       let method: string | null = null
-      if (r <= 3) {
+      if (mo.m === 3) {
+        // échéance à venir : tout en attente
+        status = 'EN_ATTENTE'
+      } else if (r <= 3) {
         status = 'PAYE'
         paidDate = new Date(d(mo.due).getTime() - (r * 2 + 1) * 24 * 3600 * 1000)
         method = ['ESPECES', 'VIREMENT', 'CHEQUE', 'CARTE'][r % 4]
@@ -362,6 +421,67 @@ async function main() {
       description: 'Compléter la fiche de graphisme n°6 (les grandes boucles). Bien tenir le crayon.',
       due: '2026-02-24',
     },
+    // --- nouveaux devoirs (maternelle, CE2, CM1, 1AC) ---
+    {
+      klass: 'PS - G1', subject: 'EPS', teacher: 4,
+      title: 'Motricité — parcours de motricité à la maison',
+      description: "Réaliser un petit parcours (sauter, ramper, lancer) avec les parents et apporter un dessin de son parcours préféré.",
+      due: '2026-02-26',
+    },
+    {
+      klass: 'MS - G1', subject: 'Mathématiques', teacher: 5,
+      title: 'Reconnaissance des chiffres de 1 à 20',
+      description: "Compléter la fiche : relier les points de 1 à 20 et colorier le dessin mystère.",
+      due: '2026-03-01',
+    },
+    {
+      klass: 'GS - B', subject: 'Français', teacher: 2,
+      title: 'Comptines — révision du trimestre',
+      description: "Réciter la comptine « Pomme de reinette » et découper les images du cahier d'activités page 9.",
+      due: '2026-02-25',
+    },
+    {
+      klass: 'CP - B', subject: 'Français', teacher: 4,
+      title: 'Écriture — les lignes seyès',
+      description: "Écrire chaque mot de la liste 3 fois en respectant les interlignes. Vérifier les jambages.",
+      due: '2026-02-27',
+    },
+    {
+      klass: 'CE2 - A', subject: 'Mathématiques', teacher: 3,
+      title: 'Tables de multiplication (x7, x8)',
+      description: 'Apprendre les tables de 7 et 8. Faire la feuille de calcul n°6 en autonomie.',
+      due: '2026-03-01',
+    },
+    {
+      klass: 'CE2 - A', subject: 'Éveil Scientifique', teacher: 3,
+      title: 'Les continents — carte à compléter',
+      description: "Coller les étiquettes des continents sur la carte muette distribuée en classe.",
+      due: '2026-02-10',
+    },
+    {
+      klass: 'CM1 - A', subject: 'Français', teacher: 1,
+      title: 'Lecture suivie — Le Petit Prince (chapitres 1 à 3)',
+      description: "Lire les chapitres 1 à 3 et répondre aux questions de compréhension du carnet de lecture.",
+      due: '2026-03-03',
+    },
+    {
+      klass: 'CM1 - A', subject: 'Mathématiques', teacher: 3,
+      title: 'Angles — mesure au rapporteur',
+      description: 'Mesurer les 8 angles de la fiche n°2 et classer-les (aigu, obtus, droit).',
+      due: '2026-02-24',
+    },
+    {
+      klass: '1AC - A', subject: 'Français', teacher: 0,
+      title: "Production écrite — lettre à un correspondant",
+      description: "Rédiger une lettre de 12 lignes à un correspondant imaginaire : présentation, goûts, questions.",
+      due: '2026-03-02',
+    },
+    {
+      klass: '1AC - A', subject: 'Informatique', teacher: 5,
+      title: 'Scratch — animer un sprite',
+      description: "Créer un projet Scratch avec au moins 2 sprites et un dialogue. Sauvegarder le projet et l'apporter sur clé USB.",
+      due: '2026-03-04',
+    },
   ]
   for (const hw of hwData) {
     await db.homework.create({
@@ -378,22 +498,35 @@ async function main() {
 
   // ================= EVALUATIONS + GRADES =================
   console.log('📝 Évaluations & notes...')
-  const p1 = await db.period.findFirst({ where: { order: 1 } })
-  const p2 = await db.period.findFirst({ where: { order: 2 } })
   const evalData = [
     { klass: 'CP - A', subject: 'Français', teacher: 0, period: p1, title: 'Contrôle n°1 — Lecture', type: 'CONTROLE', date: '2025-10-14', max: 20 },
     { klass: 'CP - A', subject: 'Français', teacher: 0, period: p1, title: 'Contrôle n°2 — Écriture', type: 'CONTROLE', date: '2025-11-12', max: 20 },
     { klass: 'CP - A', subject: 'Mathématiques', teacher: 1, period: p1, title: 'Contrôle n°1 — Numération', type: 'CONTROLE', date: '2025-10-16', max: 20 },
+    { klass: 'CP - A', subject: 'Arabe', teacher: 2, period: p1, title: 'Contrôle — Lecture coranique', type: 'CONTROLE', date: '2025-10-21', max: 20 },
+    { klass: 'CP - B', subject: 'Français', teacher: 4, period: p1, title: 'Contrôle n°1 — Lecture', type: 'CONTROLE', date: '2025-10-15', max: 20 },
+    { klass: 'CP - B', subject: 'Mathématiques', teacher: 1, period: p2, title: 'Contrôle n°1 — Calcul', type: 'CONTROLE', date: '2026-02-13', max: 20 },
     { klass: 'CE1 - A', subject: 'Français', teacher: 1, period: p1, title: 'Contrôle n°1 — Grammaire', type: 'CONTROLE', date: '2025-10-15', max: 20 },
     { klass: 'CE1 - A', subject: 'Mathématiques', teacher: 0, period: p1, title: 'Examen 1er Trimestre', type: 'EXAMEN', date: '2025-11-25', max: 20 },
+    { klass: 'CE1 - A', subject: 'Mathématiques', teacher: 0, period: p2, title: 'Contrôle — Calcul posé', type: 'CONTROLE', date: '2026-02-17', max: 20 },
     { klass: 'CE2 - A', subject: 'Éveil Scientifique', teacher: 3, period: p1, title: 'Contrôle — Les êtres vivants', type: 'CONTROLE', date: '2025-10-20', max: 20 },
+    { klass: 'CE2 - A', subject: 'Français', teacher: 1, period: p1, title: 'Contrôle — Lecture suivie', type: 'CONTROLE', date: '2025-10-22', max: 20 },
+    { klass: 'CE2 - A', subject: 'Arabe', teacher: 2, period: p2, title: 'Contrôle — Dictée arabe', type: 'CONTROLE', date: '2026-02-18', max: 20 },
+    { klass: 'CE2 - A', subject: 'Éveil Scientifique', teacher: 3, period: p2, title: 'Projet — Maquette du volcan', type: 'PROJET', date: '2026-02-20', max: 20 },
+    { klass: 'CM1 - A', subject: 'Mathématiques', teacher: 3, period: p1, title: 'Examen 1er Trimestre', type: 'EXAMEN', date: '2025-11-26', max: 20 },
+    { klass: 'CM1 - A', subject: 'Français', teacher: 1, period: p2, title: 'Contrôle n°1 — Conjugaison', type: 'CONTROLE', date: '2026-02-19', max: 20 },
+    { klass: 'CM1 - A', subject: 'Français', teacher: 1, period: p2, title: 'Oral — Lecture à voix haute', type: 'ORAL', date: '2026-02-21', max: 20 },
     { klass: 'CM2 - A', subject: 'Mathématiques', teacher: 3, period: p1, title: 'Examen 1er Trimestre', type: 'EXAMEN', date: '2025-11-26', max: 20 },
+    { klass: 'CM2 - A', subject: 'Mathématiques', teacher: 3, period: p1, title: 'Contrôle n°2 — Problèmes', type: 'CONTROLE', date: '2025-10-28', max: 20 },
     { klass: 'CM2 - A', subject: 'Français', teacher: 1, period: p1, title: 'Contrôle n°2 — Conjugaison', type: 'CONTROLE', date: '2025-11-10', max: 20 },
-    { klass: '1AC - A', subject: 'Mathématiques', teacher: 0, period: p1, title: 'Examen 1er Trimestre', type: 'EXAMEN', date: '2025-11-27', max: 20 },
-    { klass: 'GS - A', subject: 'Français', teacher: 2, period: p2, title: 'Évaluation — Reconnaissance des lettres', type: 'CONTROLE', date: '2026-02-10', max: 10 },
-    { klass: 'CP - A', subject: 'Mathématiques', teacher: 1, period: p2, title: 'Contrôle n°1 — Calcul', type: 'CONTROLE', date: '2026-02-12', max: 20 },
-    { klass: 'CE1 - A', subject: 'Français', teacher: 1, period: p2, title: 'Contrôle n°1 — Orthographe', type: 'CONTROLE', date: '2026-02-13', max: 20 },
     { klass: 'CM2 - A', subject: 'Mathématiques', teacher: 3, period: p2, title: 'Contrôle n°1 — Fractions', type: 'CONTROLE', date: '2026-02-14', max: 20 },
+    { klass: 'CM2 - A', subject: 'Éveil Scientifique', teacher: 3, period: p2, title: 'Contrôle — Électricité', type: 'CONTROLE', date: '2026-02-18', max: 20 },
+    { klass: '1AC - A', subject: 'Mathématiques', teacher: 0, period: p1, title: 'Examen 1er Trimestre', type: 'EXAMEN', date: '2025-11-27', max: 20 },
+    { klass: '1AC - A', subject: 'Français', teacher: 0, period: p1, title: 'Examen 1er Trimestre', type: 'EXAMEN', date: '2025-11-28', max: 20 },
+    { klass: '1AC - A', subject: 'Anglais', teacher: 5, period: p2, title: 'Contrôle — Unit 4 & 5', type: 'CONTROLE', date: '2026-02-20', max: 20 },
+    { klass: '1AC - A', subject: 'Mathématiques', teacher: 0, period: p2, title: 'Contrôle — Relatifs', type: 'CONTROLE', date: '2026-02-24', max: 20 },
+    { klass: 'GS - A', subject: 'Français', teacher: 2, period: p2, title: 'Évaluation — Reconnaissance des lettres', type: 'CONTROLE', date: '2026-02-10', max: 10 },
+    { klass: 'GS - B', subject: 'Français', teacher: 2, period: p2, title: 'Évaluation — Graphisme et pré-écriture', type: 'CONTROLE', date: '2026-02-11', max: 10 },
+    { klass: 'MS - G1', subject: 'Français', teacher: 5, period: p2, title: 'Évaluation — Graphisme', type: 'CONTROLE', date: '2026-02-12', max: 10 },
   ]
   const classStudents: Record<string, string[]> = {}
   for (const st of students) {
@@ -435,31 +568,55 @@ async function main() {
       title: 'Réunion parents-professeurs — Samedi 7 mars',
       content:
         "Chers parents, la réunion trimestrielle parents-professeurs se tiendra samedi 7 mars de 9h à 13h dans les salles de classes. Votre présence est vivement souhaitée pour faire le point sur le parcours de votre enfant. Merci de confirmer votre venue auprès de l'administration.",
-      audience: 'PARENTS', pinned: true, author: admin,
+      audience: 'PARENTS', pinned: true, author: admin, classId: null as string | null,
     },
     {
       title: 'Sortie pédagogique au Musée Mohammed VI',
       content:
         "Les élèves de CE1, CE2 et CM1 bénéficieront d'une sortie pédagogique au Musée Mohammed VI des civilisations le jeudi 5 mars. Le transport est assuré par l'école. Merci de retourner l'autorisation signée avant le mardi 3 mars.",
-      audience: 'TOUS', pinned: false, author: admin,
+      audience: 'TOUS', pinned: false, author: admin, classId: null as string | null,
     },
     {
       title: 'Journée portes ouvertes — Inscriptions 2026/2027',
       content:
         "L'école organise sa journée portes ouvertes le dimanche 15 mars de 10h à 17h. Invitez vos proches à venir découvrir nos locaux, rencontrer l'équipe pédagogique et s'informer sur le processus d'inscription pour l'année scolaire 2026/2027.",
-      audience: 'TOUS', pinned: false, author: admin,
+      audience: 'TOUS', pinned: false, author: admin, classId: null as string | null,
     },
     {
       title: 'Conseil pédagogique — Validation des évaluations',
       content:
         "Chers collègues, merci de saisir toutes les notes du 2ème trimestre dans la plateforme avant le vendredi 28 février à 18h. Le conseil pédagogique se réunira le lundi 2 mars pour valider les évaluations.",
-      audience: 'ENSEIGNANTS', pinned: false, author: admin,
+      audience: 'ENSEIGNANTS', pinned: false, author: admin, classId: null as string | null,
     },
     {
       title: "Kermesse de fin d'année — Appel aux bénévoles",
       content:
         "La kermesse annuelle se tiendra le samedi 30 mai. Les parents volontaires pour tenir des stands (gastronomie, jeux, brocante) sont invités à se manifester auprès de l'association des parents d'élèves.",
-      audience: 'PARENTS', pinned: false, author: teachers[2],
+      audience: 'PARENTS', pinned: false, author: teachers[2], classId: null as string | null,
+    },
+    {
+      title: 'Menu de la cantine — Mars 2026',
+      content:
+        "Le menu détaillé de la cantine pour le mois de mars est désormais disponible à l'accueil et sur la plateforme. Ce mois-ci : couscous du vendredi, poisson frais le mardi, et un nouveau menu végétarien chaque jeudi. N'hésitez pas à nous faire part de vos suggestions.",
+      audience: 'TOUS', pinned: false, author: admin, classId: null as string | null,
+    },
+    {
+      title: 'Tournoi inter-classes — Constitution des équipes',
+      content:
+        "Chers collègues, le tournoi inter-classes de fin d'année approche. Merci de constituer vos équipes (5 joueurs + 2 remplaçants) et de me transmettre les listes avant le 6 mars. Les matchs auront lieu pendant les heures d'EPS.",
+      audience: 'ENSEIGNANTS', pinned: false, author: teachers[3], classId: null as string | null,
+    },
+    {
+      title: 'Photos de classe — Jeudi prochain',
+      content:
+        "Le photographe scolaire viendra jeudi prochain. Merci de veiller à la tenue soignée des élèves. Les commandes de tirages se font auprès de l'administration.",
+      audience: 'CLASSE', pinned: false, author: teachers[0], classId: classes['CP - A'].id,
+    },
+    {
+      title: 'Sortie cinéma pédagogique — CM2 A',
+      content:
+        "Les élèves de CM2-A assisteront à une projection du film « Kirikou » au cinéma Rialto le mercredi 11 mars. Départ à 9h, retour à 12h15. Participation de 20 DH demandée.",
+      audience: 'CLASSE', pinned: true, author: teachers[3], classId: classes['CM2 - A'].id,
     },
   ]
   for (const a of annData) {
@@ -470,6 +627,7 @@ async function main() {
         audience: a.audience,
         pinned: a.pinned,
         authorId: a.author.id,
+        classId: a.classId,
       },
     })
   }
@@ -525,6 +683,20 @@ async function main() {
       content: "Bonjour, le manuel de français n'a toujours pas été distribué aux élèves de CP-A alors que les autres classes l'ont reçu. Peut-on connaître la date de livraison prévue ?",
     },
   })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c2.id,
+      authorId: admin.id,
+      content: "Bonjour Madame Bahatem, nous avons relancé le fournisseur. La livraison est attendue sous 10 jours. Nous communiquerons la date exacte dès confirmation. Merci de votre patience.",
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c2.id,
+      authorId: parents[0].id,
+      content: "Merci pour le suivi. En attendant, l'enseignante fournit des photocopies ? Mon fils me dit que oui, je voulais confirmer.",
+    },
+  })
 
   const c3 = await db.complaint.create({
     data: {
@@ -558,19 +730,104 @@ async function main() {
     },
   })
 
+  const c4 = await db.complaint.create({
+    data: {
+      subject: 'Suivi disciplinaire — bavardages répétés en classe',
+      category: 'DISCIPLINE',
+      status: 'EN_COURS',
+      priority: 'NORMALE',
+      authorId: teachers[1].id,
+      studentId: students[10].id,
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c4.id,
+      authorId: teachers[1].id,
+      content: "Bonjour Madame Bennis, je souhaite vous informer qu'Amir perturbe régulièrement le cours par des bavardages. Rien de grave, mais nous aimerions le soutenir ensemble : pouvez-vous en parler avec lui à la maison ?",
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c4.id,
+      authorId: parents[5].id,
+      content: "Bonjour Monsieur Amrani, merci pour votre retour et votre attention. Nous avons parlé avec Amir ce soir et nous allons suivre cela de près. N'hésitez pas à me tenir informée.",
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c4.id,
+      authorId: teachers[1].id,
+      content: "C'est noté, merci beaucoup pour votre coopération. Amir est un élève brillant quand il se concentre — travaillons main dans la main.",
+    },
+  })
+
+  const c5 = await db.complaint.create({
+    data: {
+      subject: 'Cantine — allergie au gluten de ma fille',
+      category: 'SANTE',
+      status: 'OUVERTE',
+      priority: 'HAUTE',
+      authorId: parents[2].id,
+      studentId: students[5].id,
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c5.id,
+      authorId: parents[2].id,
+      content: "Bonjour, ma fille Lina (CP-A) est allergique au gluten. Pouvons-nous mettre en place un repas adapté à la cantine ? Je fournis une ordonnance et un protocole du médecin si nécessaire. Merci de votre attention.",
+    },
+  })
+
+  const c6 = await db.complaint.create({
+    data: {
+      subject: 'Demande de certificat de scolarité',
+      category: 'SCOLARITE',
+      status: 'FERMEE',
+      priority: 'BASSE',
+      authorId: parents[3].id,
+      studentId: students[12].id,
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c6.id,
+      authorId: parents[3].id,
+      content: "Bonjour, j'ai besoin d'un certificat de scolarité pour Anas dans le cadre d'une démarche bancaire. Comment l'obtenir ?",
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c6.id,
+      authorId: admin.id,
+      content: "Bonjour Monsieur Kimakh, le certificat est disponible au bureau de la direction dès demain matin, ou en version électronique signée par email sur simple demande. Cordialement.",
+    },
+  })
+  await db.complaintMessage.create({
+    data: {
+      complaintId: c6.id,
+      authorId: parents[3].id,
+      content: 'Parfait, je passerai demain. Merci !',
+    },
+  })
+
   // ================= ATTENDANCE =================
   console.log('🚫 Absences & retards...')
   const attendanceTypes = ['ABSENCE', 'RETARD']
   const reasons = ['Maladie', 'Rendez-vous médical', 'Raison familiale', 'Trafic', null, null]
-  for (const st of students.slice(0, 18)) {
+  for (const st of students) {
     const n = 1 + Math.floor(Math.random() * 3)
     for (let i = 0; i < n; i++) {
       const type = attendanceTypes[Math.floor(Math.random() * 2)]
       const reason = reasons[Math.floor(Math.random() * reasons.length)]
+      const monthPool = [11, 12, 1, 2, 2]
+      const month = monthPool[Math.floor(Math.random() * monthPool.length)]
+      const year = month >= 9 ? 2025 : 2026
       await db.attendance.create({
         data: {
           studentId: st.id,
-          date: d(`2026-02-${String(3 + Math.floor(Math.random() * 18)).padStart(2, '0')}`),
+          date: d(`${year}-${String(month).padStart(2, '0')}-${String(3 + Math.floor(Math.random() * 18)).padStart(2, '0')}`),
           type,
           justified: reason !== 'Trafic' && reason !== null,
           reason,
@@ -586,8 +843,7 @@ async function main() {
     ['08:00', '09:00'], ['09:00', '10:00'], ['10:15', '11:15'],
     ['11:15', '12:15'], ['14:00', '15:00'], ['15:00', '16:00'],
   ]
-  const sampleClasses = ['CP - A', 'CE1 - A', 'CM2 - A', '1AC - A']
-  for (const k of sampleClasses) {
+  for (const k of Object.keys(classes)) {
     for (let day = 1; day <= 5; day++) {
       for (let s = 0; s < 4; s++) {
         const subj = subjectList[(day + s) % subjectList.length]
@@ -608,11 +864,18 @@ async function main() {
   }
 
   console.log('✅ Seed terminé !')
-  console.log(`   - ${await db.user.count()} utilisateurs`)
+  console.log(`   - ${await db.user.count()} utilisateurs (1 admin, ${await db.user.count({ where: { role: 'TEACHER' } })} enseignants, ${await db.user.count({ where: { role: 'PARENT' } })} parents)`)
   console.log(`   - ${await db.student.count()} élèves`)
   console.log(`   - ${await db.class.count()} classes`)
+  console.log(`   - ${await db.registration.count()} inscriptions`)
   console.log(`   - ${await db.payment.count()} paiements`)
+  console.log(`   - ${await db.homework.count()} devoirs`)
+  console.log(`   - ${await db.evaluation.count()} évaluations`)
   console.log(`   - ${await db.grade.count()} notes`)
+  console.log(`   - ${await db.announcement.count()} annonces`)
+  console.log(`   - ${await db.complaint.count()} réclamations (${await db.complaintMessage.count()} messages)`)
+  console.log(`   - ${await db.attendance.count()} absences/retards`)
+  console.log(`   - ${await db.timetableSession.count()} créneaux d'emploi du temps`)
 }
 
 main()

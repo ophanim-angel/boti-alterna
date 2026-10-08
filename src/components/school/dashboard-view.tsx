@@ -123,8 +123,8 @@ function StatCard({ icon: Icon, label, value, sub, accent }: {
 function AdminDashboard({ data, onNavigate }: { data: AdminData; onNavigate: (v: string) => void }) {
   const s = data.stats
   const collected = s.revenueCollected || 0
-  const expected = 26 * 650 * 6 // expected Sep-Feb
-  const pct = Math.min(100, Math.round((collected / expected) * 100))
+  const expected = (s.activeStudents || 0) * 650 * 6 // expected Sep-Feb
+  const pct = expected > 0 ? Math.min(100, Math.round((collected / expected) * 100)) : 0
 
   return (
     <div className="space-y-6">

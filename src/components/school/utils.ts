@@ -122,3 +122,25 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
 export const SCHOOL_YEAR = '2025/2026'
 
 export const DAYS_FR = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+
+// ============ CSV export (Excel-friendly, French locale) ============
+
+function csvCell(value: string | number | null | undefined): string {
+  const s = value == null ? '' : String(value)
+  if (/[";\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+export function downloadCSV(filename: string, headers: string[], rows: Array<Array<string | number | null | undefined>>) {
+  const lines = [headers, ...rows].map((r) => r.map(csvCell).join(';'))
+  // BOM so Excel opens accents correctly
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

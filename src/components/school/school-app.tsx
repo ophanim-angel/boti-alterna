@@ -1,10 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   GraduationCap, LayoutDashboard, Users, FileSignature, Wallet, BookOpen,
   ClipboardList, CalendarX2, CalendarDays, Megaphone, MessageSquareWarning,
-  Settings, LogOut, Menu, Loader2, Bell, Search, School,
+  Settings, LogOut, Menu, Loader2, Bell, Search, School, CircleUser,
+  Wallet as WalletIcon, Megaphone as MegaphoneIcon, BookOpen as BookOpenIcon,
+  MessageSquareWarning as MessageIcon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -14,6 +16,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { AccountView } from './account-view'
 import { LoginView } from './login-view'
 import { DashboardView } from './dashboard-view'
 import { StudentsView } from './students-view'
@@ -26,8 +29,8 @@ import { TimetableView } from './timetable-view'
 import { AnnouncementsView } from './announcements-view'
 import { ComplaintsView } from './complaints-view'
 import { SettingsView } from './settings-view'
-import { api, initials, avatarColor, ROLE_LABELS, SCHOOL_YEAR } from './utils'
-import type { Lookups, SessionUser, ViewKey } from './types'
+import { api, initials, avatarColor, ROLE_LABELS, SCHOOL_YEAR, formatDateTime } from './utils'
+import type { Lookups, NotificationItem, SearchResult, SessionUser, ViewKey } from './types'
 
 interface NavItem {
   key: ViewKey
@@ -39,6 +42,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { key: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Général' },
+  { key: 'account', label: 'Mon compte', icon: CircleUser, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Général' },
   { key: 'students', label: 'Base d\u2019élèves', icon: Users, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Scolarité' },
   { key: 'registrations', label: 'Inscriptions', icon: FileSignature, roles: ['ADMIN'], section: 'Scolarité' },
   { key: 'payments', label: 'Abonnements & paiements', icon: Wallet, roles: ['ADMIN', 'PARENT'], section: 'Scolarité' },
@@ -50,6 +54,20 @@ const NAV: NavItem[] = [
   { key: 'complaints', label: 'Réclamations & discussions', icon: MessageSquareWarning, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Communication' },
   { key: 'settings', label: 'Paramétrage', icon: Settings, roles: ['ADMIN'], section: 'Administration' },
 ]
+
+const NOTIF_ICON: Record<NotificationItem['type'], React.ComponentType<{ className?: string }>> = {
+  complaint: MessageIcon,
+  payment: WalletIcon,
+  announcement: MegaphoneIcon,
+  homework: BookOpenIcon,
+}
+
+const NOTIF_COLOR: Record<NotificationItem['type'], string> = {
+  complaint: 'bg-amber-100 text-amber-700',
+  payment: 'bg-rose-100 text-rose-700',
+  announcement: 'bg-cyan-100 text-cyan-700',
+  homework: 'bg-emerald-100 text-emerald-700',
+}
 
 const TITLES: Record<ViewKey, { title: string; sub: string }> = {
   dashboard: { title: 'Tableau de bord', sub: 'Vue d\u2019ensemble de l\u2019établissement' },
@@ -63,6 +81,7 @@ const TITLES: Record<ViewKey, { title: string; sub: string }> = {
   announcements: { title: 'Notes d\u2019information', sub: 'Actualités et annonces de l\u2019établissement' },
   complaints: { title: 'Réclamations & discussions', sub: 'Échanges entre familles, enseignants et administration' },
   settings: { title: 'Paramétrage', sub: 'Configuration de l\u2019établissement' },
+  account: { title: 'Mon compte', sub: 'Profil, sécurité et mot de passe' },
 }
 
 export function SchoolApp() {
@@ -71,6 +90,71 @@ export function SchoolApp() {
   const [view, setView] = useState<ViewKey>('dashboard')
   const [lookups, setLookups] = useState<Lookups | null>(null)
   const [mobileNav, setMobileNav] = useState(false)
+
+  // global search
+  const [searchQ, setSearchQ] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchBoxRef = useRef<HTMLDivElement | null>(null)
+  // student to open directly in the students view
+  const [focusStudentId, setFocusStudentId] = useState<string | null>(null)
+  // notifications
+  const [notifs, setNotifs] = useState<NotificationItem[]>([])
+  const [notifsOpen, setNotifsOpen] = useState(false)
+
+  const loadNotifs = useCallback(() => {
+    api<{ items: NotificationItem[] }>('/api/notifications')
+      .then((d) => setNotifs(d.items))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    loadNotifs()
+    const t = setInterval(loadNotifs, 60_000)
+    return () => clearInterval(t)
+  }, [user, loadNotifs])
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  function onSearchChange(value: string) {
+    setSearchQ(value)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    if (value.trim().length < 2) {
+      setSearchResults([])
+      setSearchOpen(false)
+      return
+    }
+    searchTimer.current = setTimeout(() => {
+      setSearchLoading(true)
+      api<{ results: SearchResult[] }>(`/api/search?q=${encodeURIComponent(value.trim())}`)
+        .then((d) => {
+          setSearchResults(d.results)
+          setSearchOpen(true)
+        })
+        .catch(() => {})
+        .finally(() => setSearchLoading(false))
+    }, 250)
+  }
+
+  function goToStudent(id: string) {
+    setFocusStudentId(id)
+    setSearchOpen(false)
+    setSearchQ('')
+    setSearchResults([])
+    setMobileNav(false)
+    setView('students')
+  }
 
   const loadLookups = useCallback(() => {
     api<Lookups>('/api/lookups')
@@ -105,6 +189,7 @@ export function SchoolApp() {
   function navigate(v: string) {
     setView(v as ViewKey)
     setMobileNav(false)
+    setSearchOpen(false)
   }
 
   if (booting) {
@@ -224,15 +309,92 @@ export function SchoolApp() {
               {SCHOOL_YEAR}
             </Badge>
 
-            <div className="hidden xl:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-400 w-56">
-              <Search className="h-3.5 w-3.5" />
-              <span>Rechercher...</span>
+            {/* global search */}
+            <div ref={searchBoxRef} className="relative hidden sm:block w-40 md:w-56">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                value={searchQ}
+                onChange={(e) => onSearchChange(e.target.value)}
+                onFocus={() => { if (searchResults.length > 0) setSearchOpen(true) }}
+                placeholder="Rechercher un élève..."
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 py-1.5 text-sm outline-none focus:border-emerald-300 focus:bg-white transition"
+              />
+              {searchLoading && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-slate-400" />}
+              {searchOpen && searchResults.length > 0 && (
+                <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden z-50">
+                  <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                    Élèves ({searchResults.length})
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {searchResults.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => goToStudent(r.id)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-emerald-50/60 text-left transition"
+                      >
+                        <div className={`h-8 w-8 rounded-full ${avatarColor(r.firstName + r.lastName)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                          {initials(r.firstName + ' ' + r.lastName)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-slate-800 truncate">{r.firstName} {r.lastName}</div>
+                          <div className="text-xs text-slate-400">{r.matricule} · {r.klassName || 'Sans classe'}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {searchOpen && !searchLoading && searchQ.trim().length >= 2 && searchResults.length === 0 && (
+                <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-slate-200 bg-white shadow-lg px-4 py-3 text-sm text-slate-400 z-50">
+                  Aucun élève trouvé.
+                </div>
+              )}
             </div>
 
-            <button className="relative h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 transition">
-              <Bell className="h-4.5 w-4.5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
-            </button>
+            {/* notifications */}
+            <DropdownMenu open={notifsOpen} onOpenChange={(o) => { setNotifsOpen(o); if (o) loadNotifs() }}>
+              <DropdownMenuTrigger asChild>
+                <button className="relative h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 transition">
+                  <Bell className="h-4.5 w-4.5" />
+                  {notifs.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {notifs.length > 9 ? '9+' : notifs.length}
+                    </span>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Notifications</span>
+                  {notifs.length > 0 && <span className="text-[10px] font-normal text-slate-400">{notifs.length} élément(s)</span>}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {notifs.length === 0 && (
+                  <div className="px-4 py-6 text-center text-sm text-slate-400">Aucune notification pour le moment.</div>
+                )}
+                <div className="max-h-96 overflow-y-auto">
+                  {notifs.map((n) => {
+                    const Icon = NOTIF_ICON[n.type] || Bell
+                    return (
+                      <DropdownMenuItem
+                        key={n.id}
+                        onClick={() => navigate(n.view)}
+                        className="items-start gap-3 py-3 cursor-pointer"
+                      >
+                        <div className={`h-8 w-8 rounded-lg ${NOTIF_COLOR[n.type]} flex items-center justify-center shrink-0 mt-0.5`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-slate-800 leading-snug">{n.title}</div>
+                          <div className="text-xs text-slate-400 truncate">{n.detail}</div>
+                          <div className="text-[10px] text-slate-300 mt-0.5">{formatDateTime(n.date)}</div>
+                        </div>
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -251,6 +413,9 @@ export function SchoolApp() {
                   <div className="mt-1 text-[11px] font-medium text-emerald-600">{ROLE_LABELS[user.role]}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('account')} className="text-emerald-700 focus:text-emerald-800">
+                  <CircleUser className="h-4 w-4 mr-2" /> Mon compte
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="text-rose-600 focus:text-rose-700">
                   <LogOut className="h-4 w-4 mr-2" /> Se déconnecter
                 </DropdownMenuItem>
@@ -262,7 +427,14 @@ export function SchoolApp() {
         {/* content */}
         <main className="flex-1 px-4 lg:px-8 py-6">
           {view === 'dashboard' && <DashboardView user={user} onNavigate={navigate} />}
-          {view === 'students' && <StudentsView user={user} lookups={lookups} />}
+          {view === 'students' && (
+            <StudentsView
+              user={user}
+              lookups={lookups}
+              focusStudentId={focusStudentId}
+              onFocusConsumed={() => setFocusStudentId(null)}
+            />
+          )}
           {view === 'registrations' && <RegistrationsView lookups={lookups} />}
           {view === 'payments' && <PaymentsView user={user} lookups={lookups} />}
           {view === 'attendance' && <AttendanceView user={user} lookups={lookups} />}
@@ -272,6 +444,7 @@ export function SchoolApp() {
           {view === 'announcements' && <AnnouncementsView user={user} lookups={lookups} />}
           {view === 'complaints' && <ComplaintsView user={user} lookups={lookups} />}
           {view === 'settings' && <SettingsView lookups={lookups} onRefresh={loadLookups} />}
+          {view === 'account' && <AccountView user={user} />}
         </main>
 
         {/* footer */}

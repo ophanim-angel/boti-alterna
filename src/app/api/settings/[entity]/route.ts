@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ent
     }
     if (entity === 'levels') {
       const items = await db.level.findMany({
-        include: { _count: { select: { classes: true, students: true } } },
+        include: { _count: { select: { classes: true } } },
         orderBy: { order: 'asc' },
       })
       return Response.json({ items })

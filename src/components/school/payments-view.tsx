@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Wallet, TrendingUp, AlertTriangle, CheckCircle2, Search, Plus } from 'lucide-react'
+import { Loader2, Wallet, TrendingUp, AlertTriangle, CheckCircle2, Search, Plus, Download, Printer } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { api, formatDate, initials, avatarColor, statusPaymentBadge, statusPaymentLabel, SCHOOL_YEAR } from './utils'
+import { api, formatDate, initials, avatarColor, statusPaymentBadge, statusPaymentLabel, downloadCSV, SCHOOL_YEAR } from './utils'
 import type { Lookups, Payment, SessionUser, Student } from './types'
 
 export function PaymentsView({ user, lookups }: { user: SessionUser; lookups: Lookups | null }) {
@@ -93,6 +93,92 @@ export function PaymentsView({ user, lookups }: { user: SessionUser; lookups: Lo
     return true
   }), [payments, statusFilter, monthFilter, q])
 
+  function exportPayments() {
+    downloadCSV(
+      `paiements-almanar-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Élève', 'Matricule', 'Classe', 'Échéance', 'Montant (DH)', 'Statut', 'Méthode', 'N° Reçu', 'Payé le', 'Échéance au'],
+      filtered.map((p) => [
+        `${p.student.firstName} ${p.student.lastName}`,
+        p.student.matricule,
+        p.student.klass?.name || '',
+        p.label,
+        p.amount,
+        statusPaymentLabel(p.status),
+        p.method || '',
+        p.receiptNo || '',
+        p.paidDate ? new Date(p.paidDate).toLocaleDateString('fr-FR') : '',
+        new Date(p.dueDate).toLocaleDateString('fr-FR'),
+      ])
+    )
+    toast({ title: 'Export CSV', description: `${filtered.length} échéance(s) exportée(s).` })
+  }
+
+  function printReceipt(p: Payment) {
+    const st = p.student
+    const paid = p.paidDate ? new Date(p.paidDate).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR')
+    const win = window.open('', '_blank', 'width=760,height=900')
+    if (!win) {
+      toast({ title: 'Fenêtre bloquée', description: 'Autorisez les pop-ups pour imprimer le reçu.', variant: 'destructive' })
+      return
+    }
+    win.document.write(`<!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="utf-8" />
+        <title>Reçu ${p.receiptNo || p.id}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; padding: 40px; }
+          .doc { max-width: 640px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+          .head { background: #059669; color: #fff; padding: 24px 32px; display: flex; justify-content: space-between; align-items: center; }
+          .head h1 { font-size: 20px; letter-spacing: .5px; }
+          .head p { font-size: 12px; opacity: .85; margin-top: 2px; }
+          .head .no { text-align: right; font-size: 13px; }
+          .head .no b { font-size: 16px; display: block; }
+          .body { padding: 28px 32px; }
+          .row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; }
+          .row .k { color: #64748b; }
+          .row .v { font-weight: 600; text-align: right; }
+          .amount { margin: 24px 0; padding: 18px 24px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+          .amount .k { font-size: 13px; color: #065f46; }
+          .amount .v { font-size: 24px; font-weight: 800; color: #059669; }
+          .foot { padding: 20px 32px 32px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: #64748b; }
+          .sign { text-align: center; }
+          .sign .line { margin-top: 48px; width: 180px; border-top: 1px solid #94a3b8; padding-top: 4px; }
+          .tag { display:inline-block; margin-top:8px; padding: 3px 10px; border-radius: 999px; background:#d1fae5; color:#065f46; font-size:11px; font-weight:700; }
+          @media print { body { padding: 0 } .doc { border: none } }
+        </style>
+      </head>
+      <body>
+        <div class="doc">
+          <div class="head">
+            <div>
+              <h1>ÉCOLE AL MANAR</h1>
+              <p>EduTrack · Casablanca · Année scolaire ${SCHOOL_YEAR}</p>
+            </div>
+            <div class="no"><b>${p.receiptNo || '—'}</b>REÇU DE PAIEMENT</div>
+          </div>
+          <div class="body">
+            <div class="row"><span class="k">Élève</span><span class="v">${st.firstName} ${st.lastName}</span></div>
+            <div class="row"><span class="k">Matricule</span><span class="v">${st.matricule}</span></div>
+            <div class="row"><span class="k">Classe</span><span class="v">${st.klass?.name || '—'}</span></div>
+            <div class="row"><span class="k">Échéance</span><span class="v">${p.label}</span></div>
+            <div class="row"><span class="k">Mode de règlement</span><span class="v">${p.method || '—'}</span></div>
+            <div class="row"><span class="k">Encaissé le</span><span class="v">${paid}</span></div>
+            <div class="amount"><span class="k">MONTANT RÉGLÉ</span><span class="v">${p.amount.toLocaleString('fr-MA')} DH</span></div>
+            <span class="tag">PAYÉ — REÇU CERTIFIÉ EXACT</span>
+          </div>
+          <div class="foot">
+            <div>Document généré par EduTrack<br/>le ${new Date().toLocaleDateString('fr-FR')} par ${user.name}</div>
+            <div class="sign"><div class="line">Cachet & signature</div></div>
+          </div>
+        </div>
+        <script>window.onload = function () { window.print() }</script>
+      </body>
+      </html>`)
+    win.document.close()
+  }
+
   const stats = useMemo(() => {
     const paid = payments.filter((p) => p.status === 'PAYE')
     const late = payments.filter((p) => p.status === 'EN_RETARD')
@@ -165,6 +251,11 @@ export function PaymentsView({ user, lookups }: { user: SessionUser; lookups: Lo
           </SelectContent>
         </Select>
         {isAdmin && (
+          <Button variant="outline" onClick={exportPayments} className="border-slate-200 text-slate-600 hover:bg-slate-50">
+            <Download className="h-4 w-4 mr-1" /> Export CSV
+          </Button>
+        )}
+        {isAdmin && (
           <Button onClick={() => setCreateOpen(true)} className="ml-auto bg-emerald-600 hover:bg-emerald-700">
             <Plus className="h-4 w-4 mr-1" /> Générer les échéances
           </Button>
@@ -189,7 +280,7 @@ export function PaymentsView({ user, lookups }: { user: SessionUser; lookups: Lo
                   <th className="px-4 py-3">Montant</th>
                   <th className="px-4 py-3">Statut</th>
                   <th className="px-4 py-3">Reçu / Méthode</th>
-                  {isAdmin && <th className="px-4 py-3 text-right">Action</th>}
+                  <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,8 +326,20 @@ export function PaymentsView({ user, lookups }: { user: SessionUser; lookups: Lo
                             </Button>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400">Réglé le {formatDate(p.paidDate)}</span>
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-xs text-slate-400">Réglé le {formatDate(p.paidDate)}</span>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-slate-200 text-slate-600 hover:bg-slate-50" onClick={() => printReceipt(p)}>
+                              <Printer className="h-3 w-3 mr-1" /> Reçu
+                            </Button>
+                          </div>
                         )}
+                      </td>
+                    )}
+                    {!isAdmin && p.status === 'PAYE' && (
+                      <td className="px-4 py-3 text-right">
+                        <Button size="sm" variant="outline" className="h-7 text-xs border-slate-200 text-slate-600 hover:bg-slate-50" onClick={() => printReceipt(p)}>
+                          <Printer className="h-3 w-3 mr-1" /> Reçu
+                        </Button>
                       </td>
                     )}
                   </tr>
