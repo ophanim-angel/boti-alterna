@@ -69,3 +69,22 @@ Stage Summary:
 - App running at :3000 with rich test data (74 students / 19 users / 518 payments / audit events)
 - Demo accounts unchanged (demo1234): direction@almanar.ma (ADMIN), s.benali@almanar.ma (TEACHER), f.bahatem@gmail.com (PARENT)
 - Seed: bun scripts/seed.ts
+
+---
+Task ID: 4
+Agent: Super Z (main agent)
+Task: Diagnose and fix the user's "Non autorisé" error after logging in with the admin account
+
+Work Log:
+- Diagnosed via dev.log timeline: POST /api/auth/login returned 200 (4x user logins) but immediately-after requests (/api/dashboard, /api/students, POST /api/students) arrived with NO valid session cookie -> 401 "Non autorisé"; alternating 200/401 on /api/notifications = one tab with valid cookie + one without
+- Root cause: app displayed in cross-site iframe (platform preview) -> browsers block third-party cookies -> Set-Cookie never stored -> zombie session (UI logged-in, all APIs 401)
+- Also confirmed GitHub state: token valid (GET /user = ophanim-angel), repo now PUBLIC, token permissions admin/maintain/push, push up to date
+- Fix: cookieless auth fallback — auth.ts getSessionUserFromRequest() (Authorization: Bearer first, cookie fallback); requireAuth(req, roles?) updated across all 23 API routes / 47 call sites via scripts/fix_auth_callsites.py; /api/auth/login returns signed token; /api/auth/me accepts Bearer
+- Frontend: utils.ts token in sessionStorage + api() sends Authorization header + dispatches UNAUTHORIZED_EVENT on 401; login-view stores token; school-app auto-logout to login screen on 401 event (no more zombie sessions), clears token on logout
+- Verified: tsc 0 src errors, eslint clean; curl: Bearer-only -> 200 on all protected endpoints, no-auth -> 401, cookie-only -> 200; browser-tested via Caddy :81: login -> cookies cleared -> Base d'élèves loads -> session survives reload with zero cookies -> screenshot download/edutrack-bearer-test.png
+- Committed 60179b9 and pushed to origin/main (85a7abe..60179b9)
+
+Stage Summary:
+- Login now works everywhere (iframe preview, direct tab, mobile): token via sessionStorage + Authorization header, cookie kept as fallback
+- 401s auto-kick to login screen with no stale UI state
+- Demo accounts unchanged (demo1234): direction@almanar.ma / s.benali@almanar.ma / f.bahatem@gmail.com
