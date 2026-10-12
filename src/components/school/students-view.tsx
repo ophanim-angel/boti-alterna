@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Search, Plus, Phone, Mail, CalendarDays, Fingerprint, MapPin, Loader2,
-  ChevronRight, TrendingUp, Wallet, CalendarX2, FileText, School, X, Download,
+  Search, Plus, ChevronRight, Loader2, X, Download, CheckSquare, Square, Users2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,30 +11,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
-import { api, formatDate, statusPaymentBadge, statusPaymentLabel, statusStudentBadge, statusStudentLabel, initials, avatarColor, gradeColor, downloadCSV, SCHOOL_YEAR } from './utils'
-import type { Lookups, SessionUser, Student, Payment, Attendance, Complaint, Guardian } from './types'
+import { api, statusStudentBadge, statusStudentLabel, initials, avatarColor, downloadCSV } from './utils'
+import type { Lookups, SessionUser, Student } from './types'
+import { FicheEleve, type FicheDetail } from './student-fiche'
 
 interface StudentsViewProps {
   user: SessionUser
   lookups: Lookups | null
   focusStudentId?: string | null
   onFocusConsumed?: () => void
-}
-
-interface StudentDetail {
-  student: Student & {
-    guardians: Guardian[]
-    klass: (Student['klass'] & { level: { name: string }; mainTeacher?: { name: string } | null }) | null
-    registrations: Array<{ id: string; schoolYear: string; type: string; date: string; status: string; feePaid: boolean; feeAmount: number }>
-    payments: Payment[]
-    attendances: Attendance[]
-    grades: Array<{ id: string; score: number | null; absent: boolean; evaluation: { title: string; maxScore: number; date: string; subject: { name: string; color: string | null }; period: { name: string } } }>
-    complaints: Complaint[]
-  }
-  progression: Array<{ subject: string; period: string; avg: number | null; count: number }>
 }
 
 export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }: StudentsViewProps) {
@@ -46,13 +32,20 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
   const [classFilter, setClassFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detail, setDetail] = useState<StudentDetail | null>(null)
+  const [detail, setDetail] = useState<FicheDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
-  const [form, setForm] = useState({ firstName: '', lastName: '', gender: 'M', classId: '', birthDate: '', massarCode: '', guardianEmail: '' })
+  const [form, setForm] = useState({ firstName: '', lastName: '', gender: 'M', classId: 'none', birthDate: '', massarCode: '', guardianEmail: '' })
   const [saving, setSaving] = useState(false)
 
-  const isParent = user.role === 'PARENT'
+  // bulk selection (ADMIN)
+  const isAdmin = user.role === 'ADMIN'
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkClassOpen, setBulkClassOpen] = useState(false)
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false)
+  const [bulkClassId, setBulkClassId] = useState('none')
+  const [bulkStatus, setBulkStatus] = useState('ACTIVE')
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,6 +65,22 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
 
   useEffect(() => { load() }, [load])
 
+  const loadDetail = useCallback(async () => {
+    if (!selectedId) { setDetail(null); return }
+    setDetailLoading(true)
+    try {
+      const d = await api<FicheDetail>(`/api/students/${selectedId}`)
+      setDetail(d)
+      load()
+    } catch (e) {
+      toast({ title: 'Erreur', description: e instanceof Error ? e.message : '', variant: 'destructive' })
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [selectedId, load, toast])
+
+  useEffect(() => { loadDetail() }, [loadDetail])
+
   // open a student coming from the global search
   useEffect(() => {
     if (focusStudentId) {
@@ -80,15 +89,6 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
     }
   }, [focusStudentId, onFocusConsumed])
 
-  useEffect(() => {
-    if (!selectedId) { setDetail(null); return }
-    setDetailLoading(true)
-    api<StudentDetail>(`/api/students/${selectedId}`)
-      .then(setDetail)
-      .catch((e) => toast({ title: 'Erreur', description: e.message, variant: 'destructive' }))
-      .finally(() => setDetailLoading(false))
-  }, [selectedId, toast])
-
   async function handleCreate() {
     if (!form.firstName || !form.lastName) {
       toast({ title: 'Champs requis', description: 'Prénom et nom obligatoires.', variant: 'destructive' })
@@ -96,15 +96,70 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
     }
     setSaving(true)
     try {
-      await api('/api/students', { method: 'POST', body: JSON.stringify(form) })
-      toast({ title: 'Élève ajouté', description: `${form.firstName} ${form.lastName} a été enregistré.` })
+      await api('/api/students', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, classId: form.classId === 'none' ? '' : form.classId }),
+      })
+      toast({ title: 'Élève ajouté', description: `${form.firstName} ${form.lastName} a été enregistré${form.classId !== 'none' ? ' et affecté à sa classe' : ' (sans classe pour le moment)'}.` })
       setCreateOpen(false)
-      setForm({ firstName: '', lastName: '', gender: 'M', classId: '', birthDate: '', massarCode: '', guardianEmail: '' })
+      setForm({ firstName: '', lastName: '', gender: 'M', classId: 'none', birthDate: '', massarCode: '', guardianEmail: '' })
       load()
     } catch (e) {
       toast({ title: 'Erreur', description: e instanceof Error ? e.message : '', variant: 'destructive' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  // ===== bulk operations =====
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function selectAllVisible() {
+    if (selected.size === students.length) setSelected(new Set())
+    else setSelected(new Set(students.map((s) => s.id)))
+  }
+
+  async function applyBulkClass() {
+    setBulkBusy(true)
+    try {
+      const res = await api<{ updated: number }>('/api/students/bulk', {
+        method: 'PATCH',
+        body: JSON.stringify({ studentIds: Array.from(selected), classId: bulkClassId === 'none' ? null : bulkClassId }),
+      })
+      const target = bulkClassId === 'none' ? 'Sans classe' : lookups?.classes.find((c) => c.id === bulkClassId)?.name
+      toast({ title: 'Affectation groupée réussie', description: `${res.updated} élève(s) affecté(s) : ${target}.` })
+      setBulkClassOpen(false)
+      setSelected(new Set())
+      load()
+    } catch (e) {
+      toast({ title: 'Affectation impossible', description: e instanceof Error ? e.message : '', variant: 'destructive' })
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  async function applyBulkStatus() {
+    setBulkBusy(true)
+    try {
+      const res = await api<{ updated: number }>('/api/students/bulk', {
+        method: 'PATCH',
+        body: JSON.stringify({ studentIds: Array.from(selected), status: bulkStatus }),
+      })
+      toast({ title: 'Statut appliqué', description: `${res.updated} élève(s) mis à jour : ${statusStudentLabel(bulkStatus)}.` })
+      setBulkStatusOpen(false)
+      setSelected(new Set())
+      load()
+    } catch (e) {
+      toast({ title: 'Erreur', description: e instanceof Error ? e.message : '', variant: 'destructive' })
+    } finally {
+      setBulkBusy(false)
     }
   }
 
@@ -147,7 +202,13 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
         {detailLoading || !detail ? (
           <div className="flex items-center justify-center h-48"><Loader2 className="h-7 w-7 animate-spin text-emerald-600" /></div>
         ) : (
-          <FicheEleve detail={detail} />
+          <FicheEleve
+            detail={detail}
+            user={user}
+            lookups={lookups}
+            onChanged={loadDetail}
+            onBack={() => setSelectedId(null)}
+          />
         )}
       </div>
     )
@@ -166,35 +227,67 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
           <SelectTrigger className="w-44"><SelectValue placeholder="Classe" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes les classes</SelectItem>
+            <SelectItem value="none">⚠ Non affectés</SelectItem>
             {lookups?.classes.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {!isParent && (
+        {!isParentRole(user) && (
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36"><SelectValue placeholder="Statut" /></SelectTrigger>
+            <SelectTrigger className="w-40"><SelectValue placeholder="Statut" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous statuts</SelectItem>
               <SelectItem value="ACTIVE">Actifs</SelectItem>
               <SelectItem value="INACTIVE">Inactifs</SelectItem>
+              <SelectItem value="LEFT">Partis / transférés</SelectItem>
+              <SelectItem value="GRADUATED">Diplômés</SelectItem>
             </SelectContent>
           </Select>
         )}
         <div className="ml-auto flex items-center gap-3">
           <span className="text-sm text-slate-500">{students.length} élève(s)</span>
-          {!isParent && (
+          {!isParentRole(user) && (
             <Button variant="outline" onClick={exportStudents} className="border-slate-200 text-slate-600 hover:bg-slate-50">
               <Download className="h-4 w-4 mr-1" /> Export CSV
             </Button>
           )}
-          {user.role === 'ADMIN' && (
+          {isAdmin && (
             <Button onClick={() => setCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4 mr-1" /> Nouvel élève
             </Button>
           )}
         </div>
       </div>
+
+      {/* bulk bar (ADMIN) */}
+      {isAdmin && students.length > 0 && (
+        <div className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 transition ${selected.size > 0 ? 'border-emerald-300 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}>
+          <button onClick={selectAllVisible} className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-emerald-700">
+            {selected.size === students.length && students.length > 0 ? (
+              <CheckSquare className="h-4 w-4 text-emerald-600" />
+            ) : (
+              <Square className="h-4 w-4" />
+            )}
+            Tout sélectionner
+          </button>
+          <span className="text-xs text-slate-400">·</span>
+          <span className="text-sm text-slate-500">
+            {selected.size > 0 ? <b className="text-emerald-700">{selected.size} sélectionné(s)</b> : 'Cochez des élèves pour les opérations groupées'}
+          </span>
+          {selected.size > 0 && (
+            <>
+              <Button size="sm" className="ml-auto bg-cyan-600 hover:bg-cyan-700" onClick={() => setBulkClassOpen(true)}>
+                <Users2 className="h-3.5 w-3.5 mr-1" /> Affecter à une classe
+              </Button>
+              <Button size="sm" variant="outline" className="border-amber-200 text-amber-700" onClick={() => setBulkStatusOpen(true)}>
+                Changer le statut
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Annuler</Button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* list */}
       {loading ? (
@@ -213,27 +306,33 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
               </CardHeader>
               <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {list.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedId(s.id)}
-                    className="group flex items-center gap-3 rounded-xl border border-slate-100 p-3 text-left transition hover:border-emerald-300 hover:bg-emerald-50/40"
-                  >
-                    <div className={`h-10 w-10 rounded-full ${avatarColor(s.firstName + s.lastName)} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
-                      {initials(s.firstName + ' ' + s.lastName)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-800 truncate">{s.firstName} {s.lastName}</span>
-                        <Badge variant="outline" className={`text-[10px] shrink-0 ${statusStudentBadge(s.status)}`}>
-                          {statusStudentLabel(s.status)}
-                        </Badge>
+                  <div key={s.id} className={`group relative flex items-center gap-3 rounded-xl border p-3 text-left transition ${selected.has(s.id) ? 'border-emerald-400 bg-emerald-50/60' : 'border-slate-100 hover:border-emerald-300 hover:bg-emerald-50/40'}`}>
+                    {isAdmin && (
+                      <Checkbox
+                        checked={selected.has(s.id)}
+                        onCheckedChange={() => toggleSelect(s.id)}
+                        className="shrink-0"
+                        aria-label={`Sélectionner ${s.firstName}`}
+                      />
+                    )}
+                    <button onClick={() => setSelectedId(s.id)} className="flex flex-1 min-w-0 items-center gap-3 text-left">
+                      <div className={`h-10 w-10 rounded-full ${avatarColor(s.firstName + s.lastName)} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                        {initials(s.firstName + ' ' + s.lastName)}
                       </div>
-                      <div className="text-xs text-slate-400 truncate">
-                        {s.matricule} · {s.klass?.level.name || '—'} · {s.gender === 'F' ? 'Fille' : 'Garçon'}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-800 truncate">{s.firstName} {s.lastName}</span>
+                          <Badge variant="outline" className={`text-[10px] shrink-0 ${statusStudentBadge(s.status)}`}>
+                            {statusStudentLabel(s.status)}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-slate-400 truncate">
+                          {s.matricule} · {s.klass?.level?.name || '—'} · {s.gender === 'F' ? 'Fille' : 'Garçon'}
+                        </div>
                       </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-emerald-500 shrink-0" />
-                  </button>
+                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-emerald-500 shrink-0" />
+                    </button>
+                  </div>
                 ))}
               </CardContent>
             </Card>
@@ -276,12 +375,16 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Classe</Label>
-                <Select value={form.classId || 'none'} onValueChange={(v) => setForm({ ...form, classId: v === 'none' ? '' : v })}>
-                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                <Label>Classe & niveau</Label>
+                <Select value={form.classId} onValueChange={(v) => setForm({ ...form, classId: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Non affecté</SelectItem>
-                    {lookups?.classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {lookups?.classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} — {c.level?.name}{typeof c._count?.students === 'number' ? ` (${c._count.students}/${c.capacity})` : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -294,6 +397,10 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
               <Label>Email du parent (compte existant)</Label>
               <Input value={form.guardianEmail} onChange={(e) => setForm({ ...form, guardianEmail: e.target.value })} placeholder="parent@exemple.com — optionnel" />
             </div>
+            <p className="text-[11px] text-slate-400">
+              Astuce : le compte parent n&apos;existe pas encore ? Créez-le dans <b>Paramétrage → Comptes</b> puis associez-le
+              depuis l&apos;onglet « Famille » de la fiche élève.
+            </p>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Annuler</Button>
               <Button onClick={handleCreate} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
@@ -303,223 +410,67 @@ export function StudentsView({ user, lookups, focusStudentId, onFocusConsumed }:
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* bulk class dialog */}
+      <Dialog open={bulkClassOpen} onOpenChange={setBulkClassOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Affecter {selected.size} élève(s) à une classe</DialogTitle></DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="space-y-1.5"><Label>Classe cible</Label>
+              <Select value={bulkClassId} onValueChange={setBulkClassId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sans classe (désaffecter)</SelectItem>
+                  {lookups?.classes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} — {c.level?.name} ({c._count?.students ?? '—'}/{c.capacity})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select></div>
+            <p className="text-[11px] text-slate-400">
+              Le système refuse l&apos;opération si la capacité de la classe est dépassée. Chaque transfert est consigné
+              dans l&apos;historique des fiches concernées.
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setBulkClassOpen(false)}>Annuler</Button>
+              <Button onClick={applyBulkClass} disabled={bulkBusy} className="bg-cyan-600 hover:bg-cyan-700">
+                {bulkBusy && <Loader2 className="h-4 w-4 animate-spin mr-1" />} Appliquer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* bulk status dialog */}
+      <Dialog open={bulkStatusOpen} onOpenChange={setBulkStatusOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Changer le statut de {selected.size} élève(s)</DialogTitle></DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="space-y-1.5"><Label>Nouveau statut</Label>
+              <Select value={bulkStatus} onValueChange={setBulkStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">Actif</SelectItem>
+                  <SelectItem value="INACTIVE">Inactif</SelectItem>
+                  <SelectItem value="LEFT">Parti / Transféré</SelectItem>
+                  <SelectItem value="GRADUATED">Diplômé</SelectItem>
+                </SelectContent>
+              </Select></div>
+            <p className="text-[11px] text-slate-400">« Parti / Diplômé » conserve toute la fiche et son historique — c'est la méthode recommandée pour retirer un élève.</p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setBulkStatusOpen(false)}>Annuler</Button>
+              <Button onClick={applyBulkStatus} disabled={bulkBusy} className="bg-amber-600 hover:bg-amber-700">
+                {bulkBusy && <Loader2 className="h-4 w-4 animate-spin mr-1" />} Appliquer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-// ==================== FICHE ELEVE ====================
-
-function FicheEleve({ detail }: { detail: StudentDetail }) {
-  const { student, progression } = detail
-  const paidCount = student.payments.filter((p) => p.status === 'PAYE').length
-  const lateCount = student.payments.filter((p) => p.status === 'EN_RETARD').length
-  const dues = student.payments.filter((p) => p.status !== 'PAYE')
-  const avgOverall = progression.length > 0
-    ? Math.round((progression.reduce((s, p) => s + (p.avg || 0), 0) / progression.filter((p) => p.avg != null).length) * 100) / 100
-    : null
-
-  return (
-    <div className="space-y-5">
-      {/* header */}
-      <Card className="border-slate-200 shadow-sm overflow-hidden">
-        <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
-        <CardContent className="p-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className={`h-16 w-16 rounded-2xl ${avatarColor(student.firstName + student.lastName)} flex items-center justify-center text-white text-xl font-bold`}>
-              {initials(student.firstName + ' ' + student.lastName)}
-            </div>
-            <div className="flex-1 min-w-52">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-bold text-slate-900">{student.firstName} {student.lastName}</h2>
-                <Badge variant="outline" className={statusStudentBadge(student.status)}>{statusStudentLabel(student.status)}</Badge>
-              </div>
-              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
-                <span className="flex items-center gap-1"><Fingerprint className="h-3.5 w-3.5" />{student.matricule}</span>
-                {student.massarCode && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />Massar : {student.massarCode}</span>}
-                {student.birthDate && <span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{formatDate(student.birthDate)}</span>}
-                <span className="flex items-center gap-1"><School className="h-3.5 w-3.5" />{student.klass ? `${student.klass.level.name} — ${student.klass.name}` : 'Non affecté'}</span>
-              </div>
-            </div>
-            {avgOverall != null && (
-              <div className="text-center rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3">
-                <div className={`text-2xl font-bold ${gradeColor(avgOverall, 20)}`}>{avgOverall}</div>
-                <div className="text-[11px] text-slate-500">moyenne /20</div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="scolarite" className="space-y-4">
-        <TabsList className="bg-white border border-slate-200 p-1 flex-wrap h-auto">
-          <TabsTrigger value="scolarite">Scolarité</TabsTrigger>
-          <TabsTrigger value="notes">Notes & progression</TabsTrigger>
-          <TabsTrigger value="paiements">Paiements ({lateCount > 0 ? lateCount + ' retard(s)' : paidCount + ' payés'})</TabsTrigger>
-          <TabsTrigger value="absences">Absences ({student.attendances.length})</TabsTrigger>
-          <TabsTrigger value="famille">Famille</TabsTrigger>
-        </TabsList>
-
-        {/* SCOLARITE */}
-        <TabsContent value="scolarite" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="border-slate-200">
-              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4 text-emerald-600" />Inscriptions</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {student.registrations.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
-                    <div>
-                      <div className="text-sm font-medium text-slate-800">{r.schoolYear}</div>
-                      <div className="text-xs text-slate-400">{r.type === 'NOUVELLE' ? 'Nouvelle inscription' : 'Réinscription'} · {formatDate(r.date)}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={r.feePaid ? 'border-emerald-200 text-emerald-700' : 'border-amber-200 text-amber-700'}>
-                        Frais : {r.feePaid ? 'payés' : 'impayés'}
-                      </Badge>
-                      <Badge variant="outline" className="bg-slate-50 text-slate-600">{r.status}</Badge>
-                    </div>
-                  </div>
-                ))}
-                {student.registrations.length === 0 && <p className="text-sm text-slate-400">Aucune inscription enregistrée.</p>}
-              </CardContent>
-            </Card>
-            <Card className="border-slate-200">
-              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><School className="h-4 w-4 text-cyan-600" />Informations classe</CardTitle></CardHeader>
-              <CardContent className="text-sm text-slate-600 space-y-2">
-                <div className="flex justify-between"><span>Classe</span><span className="font-medium text-slate-800">{student.klass?.name || '—'}</span></div>
-                <div className="flex justify-between"><span>Niveau</span><span className="font-medium text-slate-800">{student.klass?.level.name || '—'}</span></div>
-                <div className="flex justify-between"><span>Professeur principal</span><span className="font-medium text-slate-800">{student.klass?.mainTeacher?.name || '—'}</span></div>
-                <div className="flex justify-between"><span>Salle</span><span className="font-medium text-slate-800">{student.klass?.room || '—'}</span></div>
-                <div className="flex justify-between"><span>Date d&apos;entrée</span><span className="font-medium text-slate-800">{formatDate(student.enrolledAt)}</span></div>
-                {student.notes && (
-                  <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
-                    <span className="font-semibold">Particularités :</span> {student.notes}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* NOTES */}
-        <TabsContent value="notes" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="border-slate-200">
-              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4 text-emerald-600" />Progression par matière</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {progression.length === 0 && <p className="text-sm text-slate-400">Aucune note enregistrée.</p>}
-                {progression.map((p, i) => (
-                  <div key={i}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-slate-600">{p.subject} <span className="text-slate-400">({p.period})</span></span>
-                      <span className={`font-semibold ${gradeColor(p.avg, 20)}`}>{p.avg != null ? `${p.avg}/20` : '—'}</span>
-                    </div>
-                    <Progress value={((p.avg || 0) / 20) * 100} className="h-2 [&>div]:bg-emerald-500" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-            <Card className="border-slate-200">
-              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4 text-violet-500" />Dernières évaluations</CardTitle></CardHeader>
-              <CardContent className="space-y-2 max-h-80 overflow-y-auto">
-                {student.grades.slice(0, 12).map((g) => (
-                  <div key={g.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
-                    <div className="min-w-0">
-                      <div className="text-sm text-slate-800 truncate">{g.evaluation.title}</div>
-                      <div className="text-xs text-slate-400">{g.evaluation.subject.name} · {g.evaluation.period.name} · {formatDate(g.evaluation.date)}</div>
-                    </div>
-                    {g.absent ? (
-                      <Badge variant="outline" className="border-slate-200 text-slate-500">Absent</Badge>
-                    ) : (
-                      <span className={`text-sm font-bold ${gradeColor(g.score, g.evaluation.maxScore)}`}>
-                        {g.score != null ? `${g.score}/${g.evaluation.maxScore}` : '—'}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* PAIEMENTS */}
-        <TabsContent value="paiements">
-          <Card className="border-slate-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-cyan-600" />
-                Abonnements mensuels {SCHOOL_YEAR}
-                {dues.length > 0 && <Badge className="bg-amber-100 text-amber-800 border-amber-200">{dues.length} échéance(s) restante(s)</Badge>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {student.payments.map((p) => (
-                  <div key={p.id} className={`rounded-xl border p-3 ${p.status === 'EN_RETARD' ? 'border-rose-200 bg-rose-50/50' : p.status === 'PAYE' ? 'border-emerald-100' : 'border-slate-100'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-800">{p.label}</span>
-                      <Badge variant="outline" className={`text-[10px] ${statusPaymentBadge(p.status)}`}>{statusPaymentLabel(p.status)}</Badge>
-                    </div>
-                    <div className="mt-1 text-lg font-bold text-slate-900">{p.amount.toLocaleString('fr-MA')} <span className="text-xs font-normal text-slate-400">DH</span></div>
-                    <div className="text-xs text-slate-400">
-                      {p.paidDate ? `Payé le ${formatDate(p.paidDate)} · ${p.method}` : `Échéance : ${formatDate(p.dueDate)}`}
-                    </div>
-                    {p.receiptNo && <div className="mt-1 text-[10px] text-slate-400">Reçu : {p.receiptNo}</div>}
-                  </div>
-                ))}
-                {student.payments.length === 0 && <p className="text-sm text-slate-400">Aucune échéance créée pour cet élève.</p>}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ABSENCES */}
-        <TabsContent value="absences">
-          <Card className="border-slate-200">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><CalendarX2 className="h-4 w-4 text-rose-500" />Absences & retards</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {student.attendances.length === 0 && <p className="text-sm text-slate-400">Aucune absence — parfait assiduité !</p>}
-              {student.attendances.map((a) => (
-                <div key={a.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className={a.type === 'ABSENCE' ? 'border-rose-200 text-rose-700' : 'border-amber-200 text-amber-700'}>
-                      {a.type === 'ABSENCE' ? 'Absence' : 'Retard'}
-                    </Badge>
-                    <span className="text-sm text-slate-700">{formatDate(a.date)}</span>
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    {a.reason || 'Sans motif'} · {a.justified ? 'justifiée' : 'non justifiée'}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* FAMILLE */}
-        <TabsContent value="famille">
-          <Card className="border-slate-200">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Phone className="h-4 w-4 text-emerald-600" />Tuteurs & contacts</CardTitle></CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              {student.guardians.length === 0 && <p className="text-sm text-slate-400">Aucun tuteur associé.</p>}
-              {student.guardians.map((g) => (
-                <div key={g.id} className="flex items-center gap-3 rounded-xl border border-slate-100 p-4">
-                  <div className={`h-10 w-10 rounded-full ${avatarColor(g.user.name)} flex items-center justify-center text-white text-sm font-bold`}>
-                    {initials(g.user.name)}
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-slate-800">{g.user.name}</div>
-                    <div className="text-xs text-slate-500">{g.relation === 'PERE' ? 'Père' : g.relation === 'MERE' ? 'Mère' : 'Tuteur'}</div>
-                    <div className="mt-1 flex flex-col gap-0.5 text-xs text-slate-500">
-                      <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{g.user.email}</span>
-                      {g.user.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{g.user.phone}</span>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
+function isParentRole(user: SessionUser): boolean {
+  return user.role === 'PARENT'
 }

@@ -57,6 +57,7 @@ export interface Lookups {
 export interface Guardian {
   id: string
   relation: string
+  isPrimary?: boolean
   user: { id: string; name: string; email: string; phone: string | null }
 }
 
@@ -69,11 +70,22 @@ export interface Student {
   birthDate: string | null
   massarCode: string | null
   status: string
+  classId?: string | null
   enrolledAt: string
   notes: string | null
+  exitDate?: string | null
+  exitReason?: string | null
   klass: ClassInfo | null
   guardians?: Guardian[]
   _count?: { payments: number; attendances: number }
+}
+
+export interface StudentEvent {
+  id: string
+  type: string
+  detail: string
+  createdAt: string
+  actor?: { name: string } | null
 }
 
 export interface Registration {
@@ -179,6 +191,12 @@ export interface Attendance {
 
 // ============ View keys ============
 
+export interface ParentAccount {
+  id: string
+  name: string
+  email: string
+}
+
 export type ViewKey =
   | 'dashboard'
   | 'students'
@@ -192,6 +210,7 @@ export type ViewKey =
   | 'complaints'
   | 'settings'
   | 'account'
+  | 'help'
 
 export interface SearchResult {
   id: string

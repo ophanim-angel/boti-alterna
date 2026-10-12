@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   GraduationCap, LayoutDashboard, Users, FileSignature, Wallet, BookOpen,
   ClipboardList, CalendarX2, CalendarDays, Megaphone, MessageSquareWarning,
-  Settings, LogOut, Menu, Loader2, Bell, Search, School, CircleUser,
+  Settings, LogOut, Menu, Loader2, Bell, Search, School, CircleUser, HelpCircle,
   Wallet as WalletIcon, Megaphone as MegaphoneIcon, BookOpen as BookOpenIcon,
   MessageSquareWarning as MessageIcon,
 } from 'lucide-react'
@@ -28,6 +28,7 @@ import { AttendanceView } from './attendance-view'
 import { TimetableView } from './timetable-view'
 import { AnnouncementsView } from './announcements-view'
 import { ComplaintsView } from './complaints-view'
+import { HelpView } from './help-view'
 import { SettingsView } from './settings-view'
 import { api, initials, avatarColor, ROLE_LABELS, SCHOOL_YEAR, formatDateTime } from './utils'
 import type { Lookups, NotificationItem, SearchResult, SessionUser, ViewKey } from './types'
@@ -43,6 +44,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { key: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Général' },
   { key: 'account', label: 'Mon compte', icon: CircleUser, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Général' },
+  { key: 'help', label: 'Guide d\u2019utilisation', icon: HelpCircle, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Général' },
   { key: 'students', label: 'Base d\u2019élèves', icon: Users, roles: ['ADMIN', 'TEACHER', 'PARENT'], section: 'Scolarité' },
   { key: 'registrations', label: 'Inscriptions', icon: FileSignature, roles: ['ADMIN'], section: 'Scolarité' },
   { key: 'payments', label: 'Abonnements & paiements', icon: Wallet, roles: ['ADMIN', 'PARENT'], section: 'Scolarité' },
@@ -82,6 +84,7 @@ const TITLES: Record<ViewKey, { title: string; sub: string }> = {
   complaints: { title: 'Réclamations & discussions', sub: 'Échanges entre familles, enseignants et administration' },
   settings: { title: 'Paramétrage', sub: 'Configuration de l\u2019établissement' },
   account: { title: 'Mon compte', sub: 'Profil, sécurité et mot de passe' },
+  help: { title: 'Guide d\u2019utilisation', sub: 'Procédures CRM/ERP : élèves, parents, classes et niveaux' },
 }
 
 export function SchoolApp() {
@@ -445,6 +448,7 @@ export function SchoolApp() {
           {view === 'complaints' && <ComplaintsView user={user} lookups={lookups} />}
           {view === 'settings' && <SettingsView lookups={lookups} onRefresh={loadLookups} />}
           {view === 'account' && <AccountView user={user} />}
+          {view === 'help' && <HelpView user={user} />}
         </main>
 
         {/* footer */}

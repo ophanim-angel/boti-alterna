@@ -43,3 +43,29 @@ Stage Summary:
 - GitHub repo up to date: https://github.com/ophanim-angel/boti-alterna (main = ef49897)
 - App running at :3000, demo accounts unchanged (password demo1234): direction@almanar.ma / s.benali@almanar.ma / f.bahatem@gmail.com
 - Seed: bun scripts/seed.ts (regenerates all demo data)
+
+---
+Task ID: 3
+Agent: Super Z (main agent)
+Task: Confirm prototype test data + implement detailed CRM/ERP management (add/remove students & parents, class/level assignment) per researched standards, then push to GitHub
+
+Work Log:
+- Re-seeded the empty database (bun scripts/seed.ts) — confirmed prototype shows demo data (was 0 rows after environment reset)
+- Researched school ERP standards (Gibbon, RosarioSIS, Fedena patterns): student lifecycle, guardian many-to-many with relation+primary flags, bulk class assignment, capacity control, audit trail, archive-over-delete principle
+- Prisma: Student += exitDate/exitReason (lifecycle); new StudentEvent audit model (CREATED/UPDATED/CLASS_TRANSFER/STATUS_CHANGE/GUARDIAN_ADDED/GUARDIAN_REMOVED/BULK_ASSIGN with actor) + db push + generate
+- New APIs: /api/users/[id] GET/PATCH/DELETE (edit account, reset password, activate/deactivate, synchronize children links, guarded deletion rules), /api/students/[id]/guardians POST/DELETE (link/unlink parent with relation PERE|MERE|TUTEUR + isPrimary), /api/students/bulk PATCH (bulk class assignment with server-side capacity enforcement + bulk status change), PATCH /api/settings/[entity] (edit classes/levels/subjects/periods)
+- Upgraded /api/students + /api/students/[id]: classId=none filter (unassigned), audit events on create/update/transfer/status change, exit stamping, protected DELETE with French guidance error
+- UI: new student-fiche.tsx (Modifier dialog incl. class transfer + status + exit reason, Retirer des effectifs workflow, Réactiver, Supprimer with double warning, Famille tab with Associer/retirer tuteur, Historique audit timeline tab)
+- Rewrote students-view.tsx: bulk selection checkboxes + bulk bar (Affecter à une classe / Changer le statut), "Non affectés" filter, LEFT/GRADUATED status filters, fiche delegation to new component
+- Upgraded settings-view.tsx: UsersTab with Modifier dialog (name/phone/active switch/password reset/children multi-select with per-child relation), delete with confirm; Classes tab with edit dialog (rename/level/teacher/room/capacity), capacity badge X/cap with full=red; Niveaux editable
+- New help-view.tsx "Guide d'utilisation" (nav item for all roles): 8 step-by-step admin procedures (add student, assign/transfer incl. bulk, withdraw vs delete, create parent + link children, edit/deactivate/delete accounts, classes/levels, traceability, demo accounts) + role-specific parent/teacher guides
+- Fixed: users GET missing student.id (broke children linking + would wipe links on save), guardians route TS inference, stale Prisma client after schema change (dev server restart required)
+- Seed enriched: 74 students (2 LEFT with reasons, 1 GRADUATED, 1 unassigned "Nada Harrak"), StudentEvent demo trail (CREATED + transfers + status changes)
+- Browser-verified end-to-end (agent-browser): admin login, bulk select 2 students -> assign CP-A (server enforced), fiche Historique shows transfer + status events, edit dialog class transfer, guardian add (Fatima->Elene) + remove via × with confirm, parent edit dialog children list correct + add child Omar Alaoui saved to DB, Guide view renders, "Non affectés" filter shows exactly 1, delete throwaway student (M-1075) UI->DB gone
+- Final: tsc clean, eslint clean, 0 API errors; test mutations reverted, temp scripts removed
+
+Stage Summary:
+- Full CRM/ERP management confirmed: add/remove/transfer students & parents, class+level assignment (single, bulk, at creation), capacity control, audit trail, in-app user guide
+- App running at :3000 with rich test data (74 students / 19 users / 518 payments / audit events)
+- Demo accounts unchanged (demo1234): direction@almanar.ma (ADMIN), s.benali@almanar.ma (TEACHER), f.bahatem@gmail.com (PARENT)
+- Seed: bun scripts/seed.ts

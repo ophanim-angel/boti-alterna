@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       where,
       select: {
         id: true, name: true, email: true, role: true, phone: true, active: true, createdAt: true,
-        guardianOf: { include: { student: { select: { firstName: true, lastName: true, klass: { select: { name: true } } } } } },
+        guardianOf: { include: { student: { select: { id: true, firstName: true, lastName: true, matricule: true, klass: { select: { name: true } } } } } },
       },
       orderBy: { name: 'asc' },
     })

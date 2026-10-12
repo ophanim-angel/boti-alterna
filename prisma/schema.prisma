@@ -30,6 +30,7 @@ model User {
   complaints         Complaint[]          @relation("ComplaintAuthor")
   complaintMessages  ComplaintMessage[]
   attendanceRecords  Attendance[]         @relation("AttendanceRecorder")
+  studentEvents      StudentEvent[]       @relation("StudentEventActor")
 }
 
 model GuardianRelation {
@@ -144,6 +145,8 @@ model Student {
   classId    String?
   enrolledAt DateTime  @default(now())
   notes      String?
+  exitDate   DateTime? // date de sortie (radiation, transfert, diplome)
+  exitReason String?   // motif de sortie
 
   klass         Class?             @relation(fields: [classId], references: [id])
   guardians     GuardianRelation[]
@@ -152,9 +155,25 @@ model Student {
   grades        Grade[]
   attendances   Attendance[]
   complaints    Complaint[]
+  events        StudentEvent[]
 
   @@index([classId])
   @@index([lastName])
+}
+
+// Journal d'activite (audit trail) de la fiche eleve
+model StudentEvent {
+  id        String   @id @default(cuid())
+  studentId String
+  type      String // CREATED | UPDATED | CLASS_TRANSFER | STATUS_CHANGE | GUARDIAN_ADDED | GUARDIAN_REMOVED | BULK_ASSIGN
+  detail    String
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("StudentEventActor", fields: [actorId], references: [id])
+
+  @@index([studentId, createdAt])
 }
 
 model Registration {

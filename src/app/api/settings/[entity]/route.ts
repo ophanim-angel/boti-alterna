@@ -106,6 +106,56 @@ export async function POST(req: Request, { params }: { params: Promise<{ entity:
   }
 }
 
+export async function PATCH(req: Request, { params }: { params: Promise<{ entity: string }> }) {
+  const { response } = await requireAuth(['ADMIN'])
+  if (response) return response
+
+  try {
+    const { entity } = await params
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    if (!id) return badRequest('ID requis')
+    const body = await req.json()
+
+    if (entity === 'classes') {
+      const data: Record<string, unknown> = {}
+      if (body.name) data.name = body.name
+      if (body.levelId) data.levelId = body.levelId
+      if ('mainTeacherId' in body) data.mainTeacherId = body.mainTeacherId || null
+      if ('room' in body) data.room = body.room || null
+      if (body.capacity) data.capacity = Number(body.capacity) || 30
+      const item = await db.class.update({ where: { id }, data })
+      return Response.json({ item })
+    }
+    if (entity === 'levels') {
+      const data: Record<string, unknown> = {}
+      if (body.name) data.name = body.name
+      if (body.cycle) data.cycle = body.cycle
+      const item = await db.level.update({ where: { id }, data })
+      return Response.json({ item })
+    }
+    if (entity === 'subjects') {
+      const data: Record<string, unknown> = {}
+      if (body.name) data.name = body.name
+      if (body.color) data.color = body.color
+      const item = await db.subject.update({ where: { id }, data })
+      return Response.json({ item })
+    }
+    if (entity === 'periods') {
+      const data: Record<string, unknown> = {}
+      if (body.name) data.name = body.name
+      if ('startDate' in body) data.startDate = body.startDate ? new Date(body.startDate) : null
+      if ('endDate' in body) data.endDate = body.endDate ? new Date(body.endDate) : null
+      if ('active' in body) data.active = Boolean(body.active)
+      const item = await db.period.update({ where: { id }, data })
+      return Response.json({ item })
+    }
+    return badRequest('Entité inconnue')
+  } catch (e) {
+    return serverError(e)
+  }
+}
+
 export async function DELETE(req: Request, { params }: { params: Promise<{ entity: string }> }) {
   const { response } = await requireAuth(['ADMIN'])
   if (response) return response

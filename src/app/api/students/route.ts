@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams
     const q = sp.get('q')?.trim()
-    const classId = sp.get('classId')
+    const classId = sp.get('classId') // 'none' = unassigned students
     const status = sp.get('status')
 
     const where: Record<string, unknown> = {}
@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
         { massarCode: { contains: q } },
       ]
     }
-    if (classId) where.classId = classId
+    if (classId === 'none') where.classId = null
+    else if (classId) where.classId = classId
     if (status) where.status = status
 
     // Parents can only see their own children
@@ -73,6 +74,15 @@ export async function POST(req: Request) {
         massarCode: massarCode || null,
         classId: classId || null,
         notes: notes || null,
+      },
+    })
+
+    await db.studentEvent.create({
+      data: {
+        studentId: student.id,
+        type: 'CREATED',
+        detail: classId ? `Inscription — affecté en ${await db.class.findUnique({ where: { id: classId }, select: { name: true } }).then((c) => c?.name || '?')}` : 'Inscription — sans affectation de classe',
+        actorId: user.id,
       },
     })
 

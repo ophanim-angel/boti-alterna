@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         registrations: { orderBy: { date: 'desc' } },
         payments: { orderBy: { month: 'asc' } },
         attendances: { orderBy: { date: 'desc' }, take: 30, include: { recorder: { select: { name: true } } } },
+        events: { orderBy: { createdAt: 'desc' }, take: 30, include: { actor: { select: { name: true } } } },
         grades: {
           include: {
             evaluation: {
@@ -71,20 +72,64 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { user, response } = await requireAuth(['ADMIN'])
   if (response) return response
 
   try {
     const { id } = await params
     const body = await req.json()
+    const before = await db.student.findUnique({
+      where: { id },
+      include: { klass: { select: { name: true } } },
+    })
+    if (!before) return Response.json({ error: 'Élève introuvable' }, { status: 404 })
+
     const data: Record<string, unknown> = {}
-    const allowed = ['firstName', 'lastName', 'gender', 'classId', 'massarCode', 'notes', 'status']
+    const allowed = ['firstName', 'lastName', 'gender', 'classId', 'massarCode', 'notes', 'status', 'exitReason']
     for (const k of allowed) {
       if (k in body) data[k] = body[k]
     }
     if ('birthDate' in body) data.birthDate = body.birthDate ? new Date(body.birthDate) : null
+    if ('exitDate' in body) data.exitDate = body.exitDate ? new Date(body.exitDate) : null
+
+    // lifecycle: when leaving / graduating, stamp the exit date automatically
+    if ('status' in body && (body.status === 'LEFT' || body.status === 'GRADUATED')) {
+      if (!('exitDate' in body)) data.exitDate = new Date()
+      if (!('exitReason' in body) && !before.exitReason) data.exitReason = body.status === 'LEFT' ? 'Départ' : 'Diplômé'
+    }
+    // coming back / reactivating clears the exit
+    if ('status' in body && (body.status === 'ACTIVE' || body.status === 'INACTIVE')) {
+      data.exitDate = null
+      data.exitReason = null
+    }
 
     const student = await db.student.update({ where: { id }, data })
+
+    // ===== audit trail =====
+    const events: Array<{ type: string; detail: string }> = []
+
+    if ('classId' in body && (body.classId || null) !== (before.classId || null)) {
+      const to = body.classId
+        ? (await db.class.findUnique({ where: { id: body.classId }, select: { name: true } }))?.name || '?'
+        : 'Non affecté'
+      events.push({ type: 'CLASS_TRANSFER', detail: `${before.klass?.name || 'Non affecté'} → ${to}` })
+    }
+    if ('status' in body && body.status !== before.status) {
+      events.push({ type: 'STATUS_CHANGE', detail: `${before.status} → ${body.status}` })
+    }
+    const labelFields: Array<[string, string]> = [
+      ['firstName', 'Prénom'], ['lastName', 'Nom'], ['gender', 'Genre'],
+      ['birthDate', 'Date de naissance'], ['massarCode', 'Code Massar'], ['notes', 'Notes'],
+    ]
+    const changed = labelFields.filter(([k]) => k in body && String(body[k] ?? '') !== String((before as unknown as Record<string, unknown>)[k] ?? ''))
+    if (changed.length > 0) {
+      events.push({ type: 'UPDATED', detail: `Fiche modifiée : ${changed.map(([, l]) => l).join(', ')}` })
+    }
+
+    for (const ev of events) {
+      await db.studentEvent.create({ data: { studentId: id, type: ev.type, detail: ev.detail, actorId: user.id } })
+    }
+
     return Response.json({ student })
   } catch (e) {
     return serverError(e)
@@ -99,7 +144,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     await db.student.delete({ where: { id } })
     return Response.json({ ok: true })
-  } catch (e) {
-    return serverError(e)
+  } catch {
+    return badRequest('Suppression impossible — des données (paiements, notes, absences...) sont rattachées à cet élève. Préférez le changement de statut (radiation).')
   }
 }

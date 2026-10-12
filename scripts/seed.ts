@@ -198,7 +198,7 @@ async function main() {
   console.log('🎒 Élèves & familles...')
   const studentsData: Array<{
     first: string; last: string; gender: string; klass: string; birth: string;
-    parents: number[]; status?: string;
+    parents: number[]; status?: string; exit?: { reason: string; date: string };
   }> = [
     // --- famille originale (parents 0-5) ---
     { first: 'Elene', last: 'Ouadaa', gender: 'F', klass: 'GS - A', birth: '2020-03-12', parents: [0, 4] },
@@ -272,6 +272,14 @@ async function main() {
     { first: 'Yasmine', last: 'Berrada', gender: 'F', klass: '1AC - A', birth: '2014-02-08', parents: [6] },
     { first: 'Mehdi', last: 'Alaoui', gender: 'M', klass: '1AC - A', birth: '2014-04-26', parents: [7, 11] },
     { first: 'Salma', last: 'Idrissi', gender: 'F', klass: '1AC - A', birth: '2014-08-15', parents: [11] },
+    // --- cycle de vie : radiations, diplômé, non affecté (démo CRM/ERP) ---
+    { first: 'Younes', last: 'Mansouri', gender: 'M', klass: 'CM2 - A', birth: '2015-05-16', parents: [8],
+      status: 'LEFT', exit: { reason: 'Déménagement à Casablanca — transfert école Ibn Rochd', date: '2026-01-15' } },
+    { first: 'Imane', last: 'Fassi', gender: 'F', klass: 'CM1 - A', birth: '2016-02-23', parents: [9],
+      status: 'LEFT', exit: { reason: 'Transfert vers école internationale (bilingue)', date: '2026-02-02' } },
+    { first: 'Omar', last: 'Tahiri', gender: 'M', klass: 'CM2 - A', birth: '2015-03-11', parents: [10],
+      status: 'GRADUATED', exit: { reason: 'Fin du cycle primaire — admis au collège', date: '2026-01-30' } },
+    { first: 'Nada', last: 'Harrak', gender: 'F', klass: '__NONE__', birth: '2019-06-08', parents: [11] },
   ]
 
   let matricule = 1001
@@ -287,11 +295,52 @@ async function main() {
         birthDate: d(s.birth),
         massarCode: `${String.fromCharCode(65 + (matricule % 3))}${10000000 + matricule * 7}`,
         status: s.status || 'ACTIVE',
-        classId: classes[s.klass].id,
+        classId: s.klass === '__NONE__' ? null : classes[s.klass].id,
         enrolledAt: d('2025-09-01'),
+        exitDate: s.exit ? d(s.exit.date) : null,
+        exitReason: s.exit ? s.exit.reason : null,
       },
     })
     students.push({ id: st.id, klassName: s.klass, name: `${s.first} ${s.last}` })
+
+    // ===== audit trail de démonstration =====
+    await db.studentEvent.create({
+      data: {
+        studentId: st.id,
+        type: 'CREATED',
+        detail: s.klass === '__NONE__'
+          ? 'Inscription — sans affectation de classe'
+          : `Inscription — affecté en ${s.klass}`,
+        actorId: admin.id,
+        createdAt: d('2025-09-01T09:00:00'),
+      },
+    })
+    if (s.klass !== '__NONE__' && matricule % 4 === 0) {
+      // un transfert réaliste pour certains élèves
+      const target = Object.keys(classes).find((k) => k !== s.klass && k.split(' ')[0] === s.klass.split(' ')[0])
+      if (target) {
+        await db.studentEvent.create({
+          data: {
+            studentId: st.id,
+            type: 'CLASS_TRANSFER',
+            detail: `${s.klass} → ${target}`,
+            actorId: admin.id,
+            createdAt: d('2025-10-06T10:30:00'),
+          },
+        })
+      }
+    }
+    if (s.exit) {
+      await db.studentEvent.create({
+        data: {
+          studentId: st.id,
+          type: 'STATUS_CHANGE',
+          detail: `ACTIVE → ${s.status}${s.exit.reason ? ` — ${s.exit.reason}` : ''}`,
+          actorId: admin.id,
+          createdAt: d(s.exit.date + 'T14:00:00'),
+        },
+      })
+    }
 
     for (const pIdx of s.parents) {
       await db.guardianRelation.create({
