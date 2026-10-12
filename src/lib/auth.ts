@@ -83,3 +83,18 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const store = await cookies()
   return readToken(store.get(COOKIE_NAME)?.value)
 }
+
+/**
+ * Resolve the session from a request, trying in order:
+ *  1. `Authorization: Bearer <token>` header — required when the app runs
+ *     inside a cross-site iframe where browsers block cookies entirely.
+ *  2. the signed session cookie — normal first-party browsing.
+ */
+export async function getSessionUserFromRequest(req: Request): Promise<SessionUser | null> {
+  const header = req.headers.get('authorization')
+  if (header && header.toLowerCase().startsWith('bearer ')) {
+    const fromHeader = readToken(header.slice(7).trim())
+    if (fromHeader) return fromHeader
+  }
+  return getSessionUser()
+}

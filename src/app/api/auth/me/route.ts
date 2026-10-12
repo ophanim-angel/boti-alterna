@@ -1,6 +1,6 @@
-import { getSessionUser } from '@/lib/auth'
+import { getSessionUserFromRequest } from '@/lib/auth'
 
-export async function GET() {
-  const user = await getSessionUser()
+export async function GET(req: Request) {
+  const user = await getSessionUserFromRequest(req)
   return Response.json({ user })
 }

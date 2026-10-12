@@ -1,8 +1,8 @@
 import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest, SCHOOL_YEAR } from '@/lib/api-helpers'
 
-export async function GET() {
-  const { response } = await requireAuth(['ADMIN', 'TEACHER'])
+export async function GET(req: Request) {
+  const { response } = await requireAuth(req, ['ADMIN', 'TEACHER'])
   if (response) return response
 
   try {
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

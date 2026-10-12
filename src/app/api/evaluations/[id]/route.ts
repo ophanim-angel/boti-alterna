@@ -4,7 +4,7 @@ import { requireAuth, serverError, badRequest, getScopeStudentIds } from '@/lib/
 
 /** GET: grades of one evaluation (for saisie) */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN', 'TEACHER'])
+  const { response } = await requireAuth(req, ['ADMIN', 'TEACHER'])
   if (response) return response
 
   try {
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 /** POST: bulk save grades { grades: [{gradeId, score?, absent?}] } */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAuth(['ADMIN', 'TEACHER'])
+  const { user, response } = await requireAuth(req, ['ADMIN', 'TEACHER'])
   if (response) return response
 
   try {
@@ -62,8 +62,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 }
 
 /** DELETE an evaluation */
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN', 'TEACHER'])
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { response } = await requireAuth(req, ['ADMIN', 'TEACHER'])
   if (response) return response
 
   try {

@@ -107,13 +107,46 @@ export function gradeColor(score: number | null, max: number): string {
   return 'text-rose-600'
 }
 
+// ============ Auth token (iframe-safe: works even when cookies are blocked) ============
+
+const TOKEN_KEY = 'edutrack_token'
+
+export function getToken(): string | null {
+  try {
+    return window.sessionStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setToken(token: string | null) {
+  try {
+    if (token) window.sessionStorage.setItem(TOKEN_KEY, token)
+    else window.sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    /* storage unavailable — cookie fallback still applies */
+  }
+}
+
+export const UNAUTHORIZED_EVENT = 'edutrack:unauthorized'
+
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getToken()
   const res = await fetch(url, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers || {}),
+    },
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
+    // A 401 means the session is no longer valid: notify the shell so it
+    // returns to the login screen instead of staying in a broken state.
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT))
+    }
     throw new Error((data as { error?: string }).error || 'Une erreur est survenue')
   }
   return data as T

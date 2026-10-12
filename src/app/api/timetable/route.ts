@@ -4,7 +4,7 @@ import { requireAuth, serverError, badRequest } from '@/lib/api-helpers'
 
 // GET /api/timetable?classId=xxx
 export async function GET(req: NextRequest) {
-  const { response } = await requireAuth()
+  const { response } = await requireAuth(req)
   if (response) return response
 
   try {

@@ -4,7 +4,7 @@ import { hashPassword } from '@/lib/auth'
 
 /** GET /api/users?role=PARENT|TEACHER — list users (admin) */
 export async function GET(req: Request) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
 /** POST /api/users — create teacher or parent (admin) */
 export async function POST(req: Request) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

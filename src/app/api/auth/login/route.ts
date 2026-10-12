@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyPassword, setSessionCookie, type SessionUser } from '@/lib/auth'
+import { verifyPassword, setSessionCookie, createToken, type SessionUser } from '@/lib/auth'
 import { serverError, badRequest } from '@/lib/api-helpers'
 
 export async function POST(req: NextRequest) {
@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
       role: user.role as SessionUser['role'],
     }
     await setSessionCookie(sessionUser)
-    return NextResponse.json({ user: sessionUser })
+    // Token is also returned so the SPA can use `Authorization: Bearer` —
+    // cookies are blocked when the app runs inside a cross-site iframe.
+    return NextResponse.json({ user: sessionUser, token: createToken(sessionUser) })
   } catch (e) {
     return serverError(e)
   }

@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest } from '@/lib/api-helpers'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

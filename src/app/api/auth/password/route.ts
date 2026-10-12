@@ -3,7 +3,7 @@ import { requireAuth, badRequest, serverError } from '@/lib/api-helpers'
 import { hashPassword, verifyPassword } from '@/lib/auth'
 
 export async function POST(req: Request) {
-  const { user, response } = await requireAuth()
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {

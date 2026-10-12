@@ -9,7 +9,7 @@ const RELATIONS = ['PERE', 'MERE', 'TUTEUR']
  * Body: { userId? , email?, relation: PERE|MERE|TUTEUR, isPrimary?: boolean }
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -70,7 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
 /** DELETE /api/students/[id]/guardians?userId=... — unlink a guardian (admin) */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

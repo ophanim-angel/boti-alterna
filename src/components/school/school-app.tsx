@@ -30,7 +30,7 @@ import { AnnouncementsView } from './announcements-view'
 import { ComplaintsView } from './complaints-view'
 import { HelpView } from './help-view'
 import { SettingsView } from './settings-view'
-import { api, initials, avatarColor, ROLE_LABELS, SCHOOL_YEAR, formatDateTime } from './utils'
+import { api, initials, avatarColor, ROLE_LABELS, SCHOOL_YEAR, formatDateTime, setToken, UNAUTHORIZED_EVENT } from './utils'
 import type { Lookups, NotificationItem, SearchResult, SessionUser, ViewKey } from './types'
 
 interface NavItem {
@@ -177,6 +177,23 @@ export function SchoolApp() {
       .finally(() => setBooting(false))
   }, [loadLookups])
 
+  // If any API call returns 401 (expired/invalid session), drop back to the
+  // login screen instead of leaving the UI in a broken "Non autorisé" state.
+  useEffect(() => {
+    function onUnauthorized() {
+      setUser((current) => {
+        if (current) {
+          setLookups(null)
+          setToken(null)
+          return null
+        }
+        return current
+      })
+    }
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
+  }, [])
+
   function handleLogin(u: SessionUser) {
     setUser(u)
     setView('dashboard')
@@ -185,6 +202,7 @@ export function SchoolApp() {
 
   async function handleLogout() {
     await api('/api/auth/logout', { method: 'POST' }).catch(() => {})
+    setToken(null)
     setUser(null)
     setLookups(null)
   }

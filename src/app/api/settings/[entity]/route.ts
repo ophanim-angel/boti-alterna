@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest } from '@/lib/api-helpers'
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ entity: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+export async function GET(req: NextRequest, { params }: { params: Promise<{ entity: string }> }) {
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -47,7 +47,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ ent
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ entity: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -107,7 +107,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ entity:
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ entity: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -157,7 +157,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ entity
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ entity: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

@@ -1,8 +1,8 @@
 import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest, getScopeStudentIds } from '@/lib/api-helpers'
 
-export async function GET() {
-  const { user, response } = await requireAuth()
+export async function GET(req: Request) {
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {
@@ -35,7 +35,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { user, response } = await requireAuth()
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {

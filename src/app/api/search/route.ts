@@ -3,7 +3,7 @@ import { requireAuth, serverError, getScopeStudentIds } from '@/lib/api-helpers'
 
 // Global student search (role-scoped: parents only see their children)
 export async function GET(req: Request) {
-  const { user, response } = await requireAuth()
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {

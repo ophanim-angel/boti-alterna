@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest, getScopeStudentIds, SCHOOL_YEAR } from '@/lib/api-helpers'
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAuth()
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {
@@ -72,7 +72,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAuth(['ADMIN'])
+  const { user, response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -136,8 +136,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

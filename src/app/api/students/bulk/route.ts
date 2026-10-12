@@ -11,7 +11,7 @@ const STATUSES = ['ACTIVE', 'INACTIVE', 'LEFT', 'GRADUATED']
  * - status  : set the same lifecycle status on all selected students
  */
 export async function PATCH(req: NextRequest) {
-  const { user, response } = await requireAuth(['ADMIN'])
+  const { user, response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest, getScopeStudentIds, SCHOOL_YEAR } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
-  const { user, response } = await requireAuth()
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
 /** Create the monthly subscription rows for a student (school year) */
 export async function POST(req: Request) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

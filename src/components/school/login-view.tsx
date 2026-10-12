@@ -5,6 +5,7 @@ import { GraduationCap, Mail, Lock, Loader2, ShieldCheck, Users, BookOpen } from
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { setToken } from './utils'
 import type { SessionUser } from './types'
 
 const DEMO_ACCOUNTS = [
@@ -31,6 +32,7 @@ export function LoginView({ onLogin }: { onLogin: (user: SessionUser) => void })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Connexion impossible')
+      setToken(data.token || null)
       onLogin(data.user)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue')

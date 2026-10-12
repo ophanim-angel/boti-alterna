@@ -11,8 +11,8 @@ interface NotifItem {
 }
 
 // Role-aware notification feed for the topbar bell
-export async function GET() {
-  const { user, response } = await requireAuth()
+export async function GET(req: Request) {
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {

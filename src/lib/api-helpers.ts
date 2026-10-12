@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSessionUser, type SessionUser } from '@/lib/auth'
+import { getSessionUserFromRequest, type SessionUser } from '@/lib/auth'
 
 export function unauthorized() {
   return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
@@ -21,12 +21,15 @@ export function serverError(e: unknown) {
 
 /**
  * Require an authenticated user, optionally with one of the given roles.
+ * Accepts the route handler's request so the session can come from the
+ * Authorization header (iframe-safe) or from the cookie.
  * Returns { user } or { response } when denied.
  */
 export async function requireAuth(
+  req: Request,
   roles?: Array<SessionUser['role']>
 ): Promise<{ user: SessionUser; response?: undefined } | { user?: undefined; response: NextResponse }> {
-  const user = await getSessionUser()
+  const user = await getSessionUserFromRequest(req)
   if (!user) return { response: unauthorized() }
   if (roles && roles.length > 0 && !roles.includes(user.role)) {
     return { response: forbidden() }

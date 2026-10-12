@@ -2,8 +2,8 @@ import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest, getScopeStudentIds } from '@/lib/api-helpers'
 
 /** GET: complaint detail with full thread */
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAuth()
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {
@@ -36,7 +36,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 /** POST: add a message to the thread */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAuth()
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {
@@ -72,7 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
 /** PATCH: change status (ADMIN/TEACHER) */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN', 'TEACHER'])
+  const { response } = await requireAuth(req, ['ADMIN', 'TEACHER'])
   if (response) return response
 
   try {

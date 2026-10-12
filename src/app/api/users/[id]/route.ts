@@ -6,8 +6,8 @@ import { hashPassword } from '@/lib/auth'
 const RELATIONS = ['PERE', 'MERE', 'TUTEUR']
 
 /** GET /api/users/[id] — one user with linked children (admin) */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
  * When `children` is provided, guardian links are synchronized (add missing, remove absent).
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { response } = await requireAuth(['ADMIN'])
+  const { response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {
@@ -94,8 +94,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
  * Teachers: blocked when still referenced (assignments, classes, devoirs...) — deactivate instead.
  * Admins: cannot be deleted from the app.
  */
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { user, response } = await requireAuth(['ADMIN'])
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { user, response } = await requireAuth(req, ['ADMIN'])
   if (response) return response
 
   try {

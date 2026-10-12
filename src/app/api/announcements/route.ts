@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { requireAuth, serverError, badRequest, getScopeStudentIds } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
-  const { user, response } = await requireAuth()
+  const { user, response } = await requireAuth(req)
   if (response) return response
 
   try {
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: Request) {
-  const { user, response } = await requireAuth(['ADMIN', 'TEACHER'])
+  const { user, response } = await requireAuth(req, ['ADMIN', 'TEACHER'])
   if (response) return response
 
   try {
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const { user, response } = await requireAuth(['ADMIN', 'TEACHER'])
+  const { user, response } = await requireAuth(req, ['ADMIN', 'TEACHER'])
   if (response) return response
 
   try {

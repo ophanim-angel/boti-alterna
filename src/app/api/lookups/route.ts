@@ -1,8 +1,8 @@
 import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/api-helpers'
 
-export async function GET() {
-  const { response } = await requireAuth()
+export async function GET(req: Request) {
+  const { response } = await requireAuth(req)
   if (response) return response
 
   const [levels, classes, subjects, periods, teachers] = await Promise.all([
