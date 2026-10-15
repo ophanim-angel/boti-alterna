@@ -108,3 +108,25 @@ Work Log:
 Stage Summary:
 - Platform reset can no longer break the app: ghost sessions cleanly rejected, audit writes safe, DB auto-reseeds at startup
 - simo (user's student) preserved; demo accounts unchanged (demo1234)
+
+---
+Task ID: 6
+Agent: main (Super Z)
+Task: Verify all last modifications were pushed to GitHub + verify app works end-to-end
+
+Work Log:
+- Checked git status: found 1 unpushed commit (49ff13d: verification screenshot + pasted error image + worklog)
+- Pushed it: 22cb529..49ff13d, verified origin/main == HEAD (0 unpushed commits)
+- Examined user's pasted error image: it showed "Erreur serveur interne" (500) toast on a blank page — NOT the old 401
+- Probed all 15 GET endpoints with fresh Bearer token: all 200 (timetable 400 only without classId param = expected validation)
+- Tested all POST mutations (students/announcements/complaints/homeworks/users/payments): all 200 with correct payloads
+- Correct seeded credentials confirmed: direction@almanar.ma / demo1234 (NOT admin@edutrack.ma — user's earlier attempt used wrong email)
+- Full browser walkthrough via :81 proxy (user's exact path): quick-login admin → dashboard → all 14 views; all 18 API requests returned 200, zero page errors
+- Reload test: session persists (Bearer token in sessionStorage works)
+- Cleaned up all test data created during verification (DB back to 19 users / 75 students / 9 announcements / 6 complaints / 20 homeworks)
+- Screenshots: download/verify-admin-dash.png, download/verify-final.png
+
+Stage Summary:
+- GitHub fully synced: remote HEAD = 49ff13d, nothing unpushed, working tree clean
+- No code changes were needed this round — app verified working end-to-end
+- Root cause of user's confusion: (a) earlier 500 was fixed by commit 22cb529 (resilience/auto-seed), (b) login must use direction@almanar.ma / demo1234
