@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
+import { db } from '@/lib/db'
 
 const SECRET = process.env.AUTH_SECRET || 'edutrack-dev-secret-key-2026-change-me'
 const COOKIE_NAME = 'edutrack_session'
@@ -92,9 +93,25 @@ export async function getSessionUser(): Promise<SessionUser | null> {
  */
 export async function getSessionUserFromRequest(req: Request): Promise<SessionUser | null> {
   const header = req.headers.get('authorization')
+  let candidate: SessionUser | null = null
   if (header && header.toLowerCase().startsWith('bearer ')) {
-    const fromHeader = readToken(header.slice(7).trim())
-    if (fromHeader) return fromHeader
+    candidate = readToken(header.slice(7).trim())
   }
-  return getSessionUser()
+  if (!candidate) candidate = await getSessionUser()
+  if (!candidate) return null
+
+  // A valid signature only proves WE issued the token. If the user has since
+  // disappeared from the database (reset / re-seed with new IDs), the session
+  // must be treated as invalid — otherwise every FK write (audit trail, etc.)
+  // would crash with a foreign-key violation behind an "authenticated" UI.
+  try {
+    const exists = await db.user.findUnique({
+      where: { id: candidate.id },
+      select: { id: true },
+    })
+    if (!exists) return null
+  } catch {
+    return null
+  }
+  return candidate
 }

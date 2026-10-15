@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAuth, serverError, badRequest } from '@/lib/api-helpers'
+import { requireAuth, serverError, badRequest, logStudentEvent } from '@/lib/api-helpers'
 
 const RELATIONS = ['PERE', 'MERE', 'TUTEUR']
 
@@ -53,13 +53,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       include: { user: { select: { id: true, name: true, email: true } } },
     })
 
-    await db.studentEvent.create({
-      data: {
-        studentId: id,
-        type: 'GUARDIAN_ADDED',
-        detail: `${parent.name} lié comme ${relation === 'PERE' ? 'père' : relation === 'MERE' ? 'mère' : 'tuteur'}`,
-        actorId: body.actorId || null,
-      },
+    await logStudentEvent({
+      studentId: id,
+      type: 'GUARDIAN_ADDED',
+      detail: `${parent.name} lié comme ${relation === 'PERE' ? 'père' : relation === 'MERE' ? 'mère' : 'tuteur'}`,
+      actorId: body.actorId || null,
     })
 
     return Response.json({ guardian: rel })
@@ -86,12 +84,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     await db.guardianRelation.delete({ where: { userId_studentId: { userId, studentId: id } } })
 
-    await db.studentEvent.create({
-      data: {
-        studentId: id,
-        type: 'GUARDIAN_REMOVED',
-        detail: `Lien retiré avec ${rel.user.name}`,
-      },
+    await logStudentEvent({
+      studentId: id,
+      type: 'GUARDIAN_REMOVED',
+      detail: `Lien retiré avec ${rel.user.name}`,
     })
 
     return Response.json({ ok: true })

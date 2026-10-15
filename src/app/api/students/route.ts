@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAuth, serverError, badRequest, getScopeStudentIds } from '@/lib/api-helpers'
+import { requireAuth, serverError, badRequest, getScopeStudentIds, logStudentEvent } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
   const { user, response } = await requireAuth(req)
@@ -77,13 +77,14 @@ export async function POST(req: Request) {
       },
     })
 
-    await db.studentEvent.create({
-      data: {
-        studentId: student.id,
-        type: 'CREATED',
-        detail: classId ? `Inscription — affecté en ${await db.class.findUnique({ where: { id: classId }, select: { name: true } }).then((c) => c?.name || '?')}` : 'Inscription — sans affectation de classe',
-        actorId: user.id,
-      },
+    const className = classId
+      ? await db.class.findUnique({ where: { id: classId }, select: { name: true } }).then((c) => c?.name || '?')
+      : null
+    await logStudentEvent({
+      studentId: student.id,
+      type: 'CREATED',
+      detail: className ? `Inscription — affecté en ${className}` : 'Inscription — sans affectation de classe',
+      actorId: user.id,
     })
 
     // optionally link an existing parent account by email

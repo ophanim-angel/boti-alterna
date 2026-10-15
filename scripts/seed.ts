@@ -19,7 +19,7 @@ function d(dateStr: string): Date {
   return new Date(dateStr)
 }
 
-async function main() {
+export async function seedAll() {
   console.log('🌱 Suppression des données existantes...')
   await db.grade.deleteMany()
   await db.evaluation.deleteMany()
@@ -925,13 +925,17 @@ async function main() {
   console.log(`   - ${await db.complaint.count()} réclamations (${await db.complaintMessage.count()} messages)`)
   console.log(`   - ${await db.attendance.count()} absences/retards`)
   console.log(`   - ${await db.timetableSession.count()} créneaux d'emploi du temps`)
+
+  await db.$disconnect()
 }
 
-main()
-  .catch((e) => {
+// Run only when executed directly as a CLI script (bun scripts/seed.ts).
+// When imported by src/instrumentation.ts (auto-seed at server start),
+// nothing runs at import time — the caller invokes seedAll() itself.
+const isCLI = typeof process !== 'undefined' && /seed\.(ts|js)$/.test(process.argv[1] || '')
+if (isCLI) {
+  seedAll().catch((e) => {
     console.error('❌ Seed error:', e)
     process.exit(1)
   })
-  .finally(async () => {
-    await db.$disconnect()
-  })
+}

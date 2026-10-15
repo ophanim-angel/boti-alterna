@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAuth, serverError, badRequest, getScopeStudentIds, SCHOOL_YEAR } from '@/lib/api-helpers'
+import { requireAuth, serverError, badRequest, getScopeStudentIds, SCHOOL_YEAR, logStudentEvent } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { user, response } = await requireAuth(req)
@@ -127,7 +127,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     for (const ev of events) {
-      await db.studentEvent.create({ data: { studentId: id, type: ev.type, detail: ev.detail, actorId: user.id } })
+      await logStudentEvent({ studentId: id, type: ev.type, detail: ev.detail, actorId: user.id })
     }
 
     return Response.json({ student })

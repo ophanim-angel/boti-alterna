@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAuth, serverError, badRequest } from '@/lib/api-helpers'
+import { requireAuth, serverError, badRequest, logStudentEvent } from '@/lib/api-helpers'
 
 const STATUSES = ['ACTIVE', 'INACTIVE', 'LEFT', 'GRADUATED']
 
@@ -82,7 +82,7 @@ export async function PATCH(req: NextRequest) {
       if (Object.keys(data).length === 0) continue
       await db.student.update({ where: { id: s.id }, data })
       for (const ev of events) {
-        await db.studentEvent.create({ data: ev })
+        await logStudentEvent(ev)
       }
       updated++
     }

@@ -20,6 +20,30 @@ export function serverError(e: unknown) {
 }
 
 /**
+ * Best-effort audit trail write. The audit log must NEVER break the primary
+ * operation (e.g. creating a student) — failures are logged and swallowed.
+ */
+export async function logStudentEvent(data: {
+  studentId: string
+  type: string
+  detail: string
+  actorId?: string | null
+}) {
+  try {
+    await db.studentEvent.create({
+      data: {
+        studentId: data.studentId,
+        type: data.type,
+        detail: data.detail,
+        actorId: data.actorId || null,
+      },
+    })
+  } catch (e) {
+    console.error('[AUDIT] studentEvent write failed (non-blocking):', e)
+  }
+}
+
+/**
  * Require an authenticated user, optionally with one of the given roles.
  * Accepts the route handler's request so the session can come from the
  * Authorization header (iframe-safe) or from the cookie.
